@@ -7,6 +7,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageTabsList = document.getElementById('page-tabs-list');
     const addPageBtn = document.getElementById('add-page-btn');
     const deletePageBtn = document.getElementById('delete-page-btn');
+
+    // New Features DOM Elements
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const importProjectBtn = document.getElementById('import-project-btn');
+    const exportProjectBtn = document.getElementById('export-project-btn');
+    const importProjectFile = document.getElementById('import-project-file');
+    const pageLayoutSelect = document.getElementById('page-layout-select');
+    const applyLayoutAllBtn = document.getElementById('apply-layout-all-btn');
+    const btnSearchToggle = document.getElementById('btn-search-toggle');
+    const searchReplacePanel = document.getElementById('search-replace-panel');
+    const findInput = document.getElementById('find-input');
+    const replaceInput = document.getElementById('replace-input');
+    const findBtn = document.getElementById('find-btn');
+    const replaceBtn = document.getElementById('replace-btn');
+    const replaceAllBtn = document.getElementById('replace-all-btn');
+    const searchStatus = document.getElementById('search-status');
     
     const coverEditorZone = document.getElementById('cover-editor-zone');
     const contentEditorZone = document.getElementById('content-editor-zone');
@@ -550,6 +566,311 @@ document.addEventListener('DOMContentLoaded', () => {
     // Action buttons
     addPageBtn.addEventListener('click', addPage);
     deletePageBtn.addEventListener('click', deleteActivePage);
+
+    // ==========================================
+    // 3.3 THEME TOGGLE, IMPORT/EXPORT, SEARCH-REPLACE & LAYOUT EVENT LISTENERS
+    // ==========================================
+
+    // Initialize Theme on Load
+    let editorTheme = localStorage.getItem('editor-theme') || 'dark';
+    if (editorTheme === 'light') {
+        document.body.classList.add('light-mode');
+        if (themeToggleBtn) themeToggleBtn.textContent = '☀️';
+    } else {
+        document.body.classList.remove('light-mode');
+        if (themeToggleBtn) themeToggleBtn.textContent = '🌙';
+    }
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            themeToggleBtn.textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('editor-theme', isLight ? 'light' : 'dark');
+        });
+    }
+
+    // Page Layout binding
+    if (pageLayoutSelect) {
+        pageLayoutSelect.addEventListener('change', () => {
+            if (activePageIndex > 0 && activePageIndex < pagesData.length) {
+                pagesData[activePageIndex].layout = pageLayoutSelect.value;
+                renderPreview();
+                saveWorkspaceToLocalStorage();
+            }
+        });
+    }
+
+    if (applyLayoutAllBtn) {
+        applyLayoutAllBtn.addEventListener('click', () => {
+            const activeLayout = pageLayoutSelect.value;
+            if (confirm(`Kya aap sach me sabhi pages ka layout "${activeLayout === 'two-column' ? 'Two Columns' : 'Single Column'}" karna chahte hain?`)) {
+                pagesData.forEach((page, index) => {
+                    if (index > 0) { // Skip Cover page
+                        page.layout = activeLayout;
+                    }
+                });
+                renderPreview();
+                saveWorkspaceToLocalStorage();
+                alert(`Layout applied to all pages! (सभी पेजों पर "${activeLayout === 'two-column' ? 'दो कॉलम' : 'एक कॉलम'}" लेआउट लागू कर दिया गया है!)`);
+            }
+        });
+    }
+
+    // Project Export
+    if (exportProjectBtn) {
+        exportProjectBtn.addEventListener('click', exportProject);
+    }
+
+    function exportProject() {
+        saveCurrentInputState(); // capture latest values
+        const state = {
+            pagesData,
+            lastPageData,
+            activePageIndex,
+            contentFontSize,
+            watermarkSettings,
+            customDesignSettings,
+            socialSettings,
+            uploadedImages,
+            imageCounter,
+            spacingSettings: {
+                fontStyle: globalFontStyleSelect.value,
+                fontWeight: globalFontWeightSelect.value,
+                lineSpacing: globalLineSpacingSelect.value,
+                letterSpacing: globalLetterSpacingSelect.value
+            }
+        };
+
+        const jsonStr = JSON.stringify(state, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        const docTitleClean = (pagesData[0] && pagesData[0].title) ? pagesData[0].title.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '_') : 'Loka_Nota';
+        a.href = url;
+        a.download = `${docTitleClean}_project.raaz`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Project Import
+    if (importProjectBtn && importProjectFile) {
+        importProjectBtn.addEventListener('click', () => {
+            importProjectFile.click();
+        });
+
+        importProjectFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const state = JSON.parse(event.target.result);
+                        
+                        // Validate basic shape
+                        if (!state.pagesData || !Array.isArray(state.pagesData) || state.pagesData.length === 0) {
+                            alert("Afsos! Ye valid Loka Nota project file (.raaz) nahi hai.");
+                            return;
+                        }
+
+                        // Apply states
+                        pagesData = state.pagesData;
+                        lastPageData = state.lastPageData || { title: 'THANK YOU', subtitle: 'लोकबंधु', tagline: 'कोचिंग नहीं क्रांति' };
+                        activePageIndex = state.activePageIndex || 0;
+                        contentFontSize = state.contentFontSize || 13.5;
+                        watermarkSettings = state.watermarkSettings || watermarkSettings;
+                        customDesignSettings = state.customDesignSettings || customDesignSettings;
+                        socialSettings = state.socialSettings || { telegramText: '@lokbandhu', youtubeText: 'Lokbandhu Coaching' };
+                        if (socialSettings.fontSize === undefined) socialSettings.fontSize = 11;
+                        if (socialSettings.placement === undefined) socialSettings.placement = 'split';
+                        uploadedImages = state.uploadedImages || {};
+                        imageCounter = state.imageCounter || 1;
+
+                        // Sync footer social inputs
+                        if (footerTelegramInput) footerTelegramInput.value = socialSettings.telegramText || '';
+                        if (footerYoutubeInput) footerYoutubeInput.value = socialSettings.youtubeText || '';
+                        if (footerSocialSizeInput) {
+                            const fsVal = socialSettings.fontSize || 11;
+                            footerSocialSizeInput.value = fsVal;
+                            if (footerSocialSizeVal) footerSocialSizeVal.textContent = `${fsVal}px`;
+                        }
+                        if (footerSocialPlacementSelect) footerSocialPlacementSelect.value = socialSettings.placement || 'split';
+
+                        // Restore font/spacing inputs
+                        if (state.spacingSettings) {
+                            globalFontStyleSelect.value = state.spacingSettings.fontStyle || 'modern-sans';
+                            globalFontWeightSelect.value = state.spacingSettings.fontWeight || '700';
+                            globalLineSpacingSelect.value = state.spacingSettings.lineSpacing || '1.45';
+                            globalLetterSpacingSelect.value = state.spacingSettings.letterSpacing || '0px';
+                        }
+
+                        // Apply Spacings to DOM
+                        fontSizeValSpan.textContent = `${contentFontSize}px`;
+                        document.documentElement.style.setProperty('--content-font-size', `${contentFontSize}px`);
+                        document.documentElement.style.setProperty('--content-font-weight', globalFontWeightSelect.value);
+                        document.documentElement.style.setProperty('--content-line-height', globalLineSpacingSelect.value);
+                        document.documentElement.style.setProperty('--content-letter-spacing', globalLetterSpacingSelect.value);
+
+                        // Apply Font Style
+                        document.body.classList.remove('font-poppins-sans', 'font-traditional-serif', 'font-hybrid-style');
+                        if (globalFontStyleSelect.value !== 'modern-sans') {
+                            document.body.classList.add(`font-${globalFontStyleSelect.value}`);
+                        }
+
+                        // Restore Watermark UI inputs
+                        watermarkTypeSelect.value = watermarkSettings.type;
+                        watermarkTextInput.value = watermarkSettings.text;
+                        watermarkPositionSelect.value = watermarkSettings.position;
+                        watermarkRotationSelect.value = watermarkSettings.rotation;
+                        watermarkOpacitySlider.value = watermarkSettings.opacity * 100;
+                        watermarkOpacityVal.textContent = `${watermarkSettings.opacity * 100}%`;
+                        watermarkSizeSlider.value = watermarkSettings.size;
+                        updateWatermarkSizeLabel();
+                        watermarkColorInput.value = watermarkSettings.color;
+
+                        watermarkTextGroup.style.display = (watermarkSettings.type === 'text') ? 'flex' : 'none';
+                        watermarkColorGroup.style.display = (watermarkSettings.type === 'text') ? 'flex' : 'none';
+                        watermarkImageGroup.style.display = (watermarkSettings.type === 'image') ? 'flex' : 'none';
+
+                        // Apply customDesignSettings to DOM and UI inputs
+                        applyCustomDesignSettingsToDOM();
+
+                        // Save, Render, Switch view
+                        saveWorkspaceToLocalStorage();
+                        renderPreview();
+                        switchActivePage(activePageIndex);
+                        
+                        alert("Project successfully loaded! (फ़ाइल सफलतापूर्वक लोड हो गई है!)");
+                    } catch (err) {
+                        console.error("Import error:", err);
+                        alert("Error reading project file. Code: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+                // Reset file input so same file can be imported again
+                importProjectFile.value = '';
+            }
+        });
+    }
+
+    // Find & Replace
+    if (btnSearchToggle && searchReplacePanel) {
+        btnSearchToggle.addEventListener('click', () => {
+            const isHidden = searchReplacePanel.style.display === 'none';
+            searchReplacePanel.style.display = isHidden ? 'flex' : 'none';
+            if (isHidden && findInput) {
+                findInput.focus();
+            }
+            if (!isHidden) {
+                if (searchStatus) searchStatus.textContent = '';
+            }
+        });
+    }
+
+    let lastSearchTerm = '';
+    let lastMatchIndex = -1;
+
+    if (findBtn) {
+        findBtn.addEventListener('click', () => {
+            const term = findInput.value;
+            if (!term) {
+                if (searchStatus) searchStatus.textContent = 'Enter search term';
+                return;
+            }
+
+            const text = pageContentInput.value;
+            let startIndex = pageContentInput.selectionEnd;
+
+            // If term changed, reset match tracking
+            if (term !== lastSearchTerm) {
+                lastSearchTerm = term;
+                startIndex = 0;
+            }
+
+            let matchIndex = text.toLowerCase().indexOf(term.toLowerCase(), startIndex);
+            
+            // Wrap around
+            if (matchIndex === -1 && startIndex > 0) {
+                matchIndex = text.toLowerCase().indexOf(term.toLowerCase(), 0);
+            }
+
+            if (matchIndex !== -1) {
+                pageContentInput.focus();
+                pageContentInput.setSelectionRange(matchIndex, matchIndex + term.length);
+                
+                // Scroll selection into view
+                const textBefore = text.substring(0, matchIndex);
+                const linesCount = textBefore.split('\n').length;
+                const lineHeight = 20; // Estimated line height in px
+                pageContentInput.scrollTop = (linesCount - 3) * lineHeight;
+
+                lastMatchIndex = matchIndex;
+                if (searchStatus) searchStatus.textContent = 'Match found!';
+            } else {
+                if (searchStatus) searchStatus.textContent = 'No match found';
+            }
+        });
+    }
+
+    if (replaceBtn) {
+        replaceBtn.addEventListener('click', () => {
+            const term = findInput.value;
+            const replacement = replaceInput.value;
+            if (!term) return;
+
+            const text = pageContentInput.value;
+            const startSel = pageContentInput.selectionStart;
+            const endSel = pageContentInput.selectionEnd;
+            const selectedText = text.substring(startSel, endSel);
+
+            if (selectedText.toLowerCase() === term.toLowerCase()) {
+                const newText = text.substring(0, startSel) + replacement + text.substring(endSel);
+                pageContentInput.value = newText;
+                pageContentInput.focus();
+                pageContentInput.setSelectionRange(startSel, startSel + replacement.length);
+
+                // Trigger render & save
+                pagesData[activePageIndex].text = newText;
+                updateStats();
+                debouncedRenderAndSave();
+
+                if (searchStatus) searchStatus.textContent = 'Replaced!';
+            } else {
+                // Try finding next match first
+                if (findBtn) findBtn.click();
+            }
+        });
+    }
+
+    if (replaceAllBtn) {
+        replaceAllBtn.addEventListener('click', () => {
+            const term = findInput.value;
+            const replacement = replaceInput.value;
+            if (!term) return;
+
+            const text = pageContentInput.value;
+            const regex = new RegExp(term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            const matches = text.match(regex);
+            
+            if (matches && matches.length > 0) {
+                const count = matches.length;
+                const newText = text.replace(regex, replacement);
+                pageContentInput.value = newText;
+                
+                pagesData[activePageIndex].text = newText;
+                updateStats();
+                debouncedRenderAndSave();
+
+                if (searchStatus) searchStatus.textContent = `Replaced ${count} occurrences!`;
+            } else {
+                if (searchStatus) searchStatus.textContent = 'Nothing to replace';
+            }
+        });
+    }
+
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', () => {
             if (confirm("Kya aap sach me saare content pages ka text aur settings saaf karna chahte hain?")) {
@@ -650,12 +971,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Markdown tool prefix insertion
+    // Markdown tool prefix insertion (and wrapping selection if data-suffix is present)
     toolbarButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             if (activePageIndex > 0) {
-                const prefix = btn.getAttribute('data-prefix');
-                insertAtCursor(pageContentInput, prefix);
+                const prefix = btn.getAttribute('data-prefix') || '';
+                const suffix = btn.getAttribute('data-suffix') || '';
+                
+                insertWrappedAtCursor(pageContentInput, prefix, suffix);
                 pagesData[activePageIndex].text = pageContentInput.value;
                 renderPreview();
                 updateStats();
@@ -663,6 +986,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+
 
     // 3.1 WATERMARK EVENT BINDINGS
     watermarkTypeSelect.addEventListener('change', () => {
@@ -940,12 +1265,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const lastTabIdx = pagesData.length;
 
+        const pageLayoutBar = document.querySelector('.page-layout-bar');
+
         if (index === 0) {
             // Display Cover controls
             coverEditorZone.classList.add('active');
             contentEditorZone.classList.remove('active');
             lastEditorZone.classList.remove('active');
             activePageLabel.textContent = "Editing: Cover Page";
+            if (pageLayoutBar) pageLayoutBar.style.display = 'none';
             
             // Sync values to cover fields
             docTitleInput.value = pagesData[0].title;
@@ -959,6 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             contentEditorZone.classList.remove('active');
             lastEditorZone.classList.add('active');
             activePageLabel.textContent = "Editing: End Page";
+            if (pageLayoutBar) pageLayoutBar.style.display = 'none';
 
             // Sync values to last page fields
             lastTitleInput.value = lastPageData.title;
@@ -970,6 +1299,12 @@ document.addEventListener('DOMContentLoaded', () => {
             contentEditorZone.classList.add('active');
             lastEditorZone.classList.remove('active');
             activePageLabel.textContent = `Editing: Page ${index}`;
+            if (pageLayoutBar) pageLayoutBar.style.display = 'flex';
+            
+            // Sync page layout selector
+            if (pageLayoutSelect && pagesData[index]) {
+                pageLayoutSelect.value = pagesData[index].layout || 'single';
+            }
             
             // Populate textarea specifically for this page
             pageContentInput.value = pagesData[index].text;
@@ -998,7 +1333,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         pagesData.push({
             type: 'content',
-            text: ''
+            text: '',
+            layout: 'single'
         });
 
         const newIndex = pagesData.length - 1;
@@ -1087,21 +1423,38 @@ document.addEventListener('DOMContentLoaded', () => {
         formatted = formatted.replace(/([^\n])\s*(•|●|■|▪|▫|[\u2022\u25CF\u25AA\u25AB])/g, '$1\n$2');
         
         // 3. Insert newlines before known sections if they are embedded in text
-        const knownSections = [
+        // (Excluding short/common nouns like 'पुरस्कार', 'खेल', 'विविध', 'चर्चित व्यक्तित्व', 'प्रमुख अभियान' to avoid mid-sentence split glitches)
+        const autoSplitSections = [
             "योजनाएँ एवं नीतियाँ", "योजनाएँ एवं नीतियां", "योजनाएं एवं नीतियां", 
             "महोत्सव/मेले/कार्यक्रम", "महोत्सव, मेले व कार्यक्रम", "महोत्सव, मेले और कार्यक्रम",
-            "आर्थिक विकास व समझौते", "आर्थिक विकास", "आर्थिक विकास और समझौते",
-            "चर्चित व्यक्तित्व", "पुरस्कार", "खेल", "खेल समाचार", "विविध", 
-            "विविध घटनाक्रम", "प्रमुख अभियान"
+            "आर्थिक विकास व समझौते", "आर्थिक विकास", "आर्थिक विकास और समझौते"
         ];
         
-        knownSections.forEach(sec => {
+        autoSplitSections.forEach(sec => {
             const escapedSec = sec.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`([^\\n])\\s*(${escapedSec})`, 'g');
             formatted = formatted.replace(regex, '$1\n$2');
         });
 
         return formatted;
+    }
+
+    function formatMarkdownText(text) {
+        if (!text) return '';
+        const colorMap = {
+            'y': 'yellow', 'yellow': 'yellow',
+            'g': 'green', 'green': 'green',
+            'p': 'pink', 'pink': 'pink',
+            'b': 'blue', 'blue': 'blue',
+            'o': 'orange', 'orange': 'orange'
+        };
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/==(?:(yellow|green|pink|blue|orange|y|g|p|b|o)\|)?(.*?)==/gi, (match, color, content) => {
+                const colorKey = (color || 'yellow').toLowerCase();
+                const normalizedColor = colorMap[colorKey] || 'yellow';
+                return `<mark class="text-highlight highlight-${normalizedColor}">${content}</mark>`;
+            });
     }
 
     function parseTextToBlocks(text) {
@@ -1130,10 +1483,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            const lowerTrimmed = trimmed.toLowerCase();
-            if (lowerTrimmed === 'space' || lowerTrimmed === 'spce' || lowerTrimmed === '[space]') {
+            // Match 'space [1-50]' (optional brackets, count defaults to 1, capped at 50)
+            const spaceMatch = trimmed.match(/^\[?(space|spce)(?:\s+(\d+))?\]?$/i);
+            if (spaceMatch) {
+                const count = Math.min(50, spaceMatch[2] ? parseInt(spaceMatch[2], 10) : 1);
                 blocks.push({
                     type: 'spacer',
+                    count: count,
                     markdown: trimmed
                 });
                 continue;
@@ -1183,15 +1539,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const cleanLine = trimmed.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '').trim();
 
             // 1. SECTION BAR DETECTOR
-            if (trimmed.startsWith('# ') || trimmed.startsWith('#') && !trimmed.startsWith('##')) {
+            if (trimmed.startsWith('# ') || (trimmed.startsWith('#') && !trimmed.startsWith('##'))) {
                 blocks.push({
                     type: 'section',
                     markdown: line
                 });
-            } else if (knownSections.some(sec => {
-                const cleanSec = sec.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '').trim();
-                return cleanLine === cleanSec || trimmed === sec;
-            })) {
+            } else if (
+                !trimmed.startsWith('##') &&
+                !/^[🔶🔷🔸🔹♦️💎]/u.test(trimmed) &&
+                knownSections.some(sec => {
+                    const cleanSec = sec.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '').trim();
+                    return cleanLine === cleanSec || trimmed === sec;
+                })
+            ) {
                 blocks.push({
                     type: 'section',
                     markdown: line
@@ -1202,8 +1562,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (
                 trimmed.startsWith('## ') || 
                 trimmed.startsWith('##') || 
-                /^[🔶🔷🔸🔹♦️💎]/.test(trimmed) ||
-                /^##\s*[🔶🔷🔸🔹♦️💎]/.test(trimmed)
+                /^[🔶🔷🔸🔹♦️💎]/u.test(trimmed) ||
+                /^##\s*[🔶🔷🔸🔹♦️💎]/u.test(trimmed)
             ) {
                 blocks.push({
                     type: 'topic',
@@ -1304,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let bulletText = line.replace(/^[•\-\*\u2022\u25CF]\s*/, '').trim();
             const item = document.createElement('div');
             item.className = 'bullet-item';
-            let formattedText = bulletText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let formattedText = formatMarkdownText(bulletText);
             item.innerHTML = formattedText;
             return item;
         } 
@@ -1422,7 +1782,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 cells.forEach(cellText => {
                     const cell = document.createElement(isHeader ? 'th' : 'td');
-                    let formattedText = cellText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    let formattedText = formatMarkdownText(cellText);
                     cell.innerHTML = formattedText;
                     tr.appendChild(cell);
                 });
@@ -1442,13 +1802,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return p;
         }
         
-        // 4.95 SPACER BLOCK RENDER (4 LINES GAP)
+        // 4.95 SPACER BLOCK RENDER (DYNAMIC GAP)
         else if (block.type === 'spacer') {
             const div = document.createElement('div');
             div.className = 'vertical-spacer';
             div.style.display = 'block';
             div.style.width = '100%';
-            div.style.height = 'calc(var(--content-font-size) * var(--content-line-height, 1.45) * 4)';
+            const count = block.count || 1;
+            div.style.height = `calc(var(--content-font-size) * var(--content-line-height, 1.45) * ${count})`;
             return div;
         }
         
@@ -1456,7 +1817,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else {
             const p = document.createElement('p');
             p.className = 'body-text';
-            let formattedText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let formattedText = formatMarkdownText(line);
             p.innerHTML = formattedText;
             return p;
         }
@@ -1466,7 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let line = markdown.trim();
         if (type === 'bullet') {
             let bulletText = line.replace(/^[•\-\*\u2022\u25CF]\s*/, '').trim();
-            let formattedText = bulletText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let formattedText = formatMarkdownText(bulletText);
             node.innerHTML = formattedText;
         } else if (type === 'box') {
             let highlightText = line.replace(/^\s*>\s*/, '').trim();
@@ -1494,7 +1855,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 cells.forEach(cellText => {
                     const cell = document.createElement(isHeader ? 'th' : 'td');
-                    let formattedText = cellText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    let formattedText = formatMarkdownText(cellText);
                     cell.innerHTML = formattedText;
                     tr.appendChild(cell);
                 });
@@ -1506,9 +1867,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (type === 'empty') {
             node.innerHTML = '&nbsp;';
         } else if (type === 'spacer') {
-            node.style.height = 'calc(var(--content-font-size) * var(--content-line-height, 1.45) * 4)';
+            const spaceMatch = markdown.trim().match(/^\[?(space|spce)(?:\s+(\d+))?\]?$/i);
+            const count = Math.min(50, (spaceMatch && spaceMatch[2]) ? parseInt(spaceMatch[2], 10) : 1);
+            node.style.height = `calc(var(--content-font-size) * var(--content-line-height, 1.45) * ${count})`;
         } else {
-            let formattedText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let formattedText = formatMarkdownText(line);
             node.innerHTML = formattedText;
         }
     }
@@ -1607,16 +1970,17 @@ document.addEventListener('DOMContentLoaded', () => {
         injectWatermark(coverPageElement); // Inject Watermark Behind Content
         pagesContainer.appendChild(coverPageElement);
 
-        // 1.5 Track cursor position if editor is focused on a content page
+        // 1.5 Track cursor position in content pages
         const isEditorActive = (document.activeElement === pageContentInput && activePageIndex > 0 && activePageIndex < pagesData.length);
         let cursorStart = 0;
         let cursorEnd = 0;
         let globalCursorPos = 0;
 
-        if (isEditorActive) {
-            cursorStart = pageContentInput.selectionStart;
-            cursorEnd = pageContentInput.selectionEnd;
-
+        if (activePageIndex > 0 && activePageIndex < pagesData.length) {
+            if (isEditorActive) {
+                cursorStart = pageContentInput.selectionStart;
+                cursorEnd = pageContentInput.selectionEnd;
+            }
             // Calculate global cursor position in unified content text
             let accumulatedLength = 0;
             for (let idx = 1; idx < pagesData.length; idx++) {
@@ -1631,6 +1995,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Distribute blocks across Content Pages dynamically
         const fullContentMarkdown = pagesData.slice(1).map(p => p.text).join('\n');
         const blocks = parseTextToBlocks(fullContentMarkdown);
+        // Assign original unique IDs to blocks for drag-and-drop tracking
+        blocks.forEach((block, idx) => {
+            block.id = idx;
+        });
 
         let currentVisualPageNum = 1;
         let currentPageStruct = createContentPageDOM(2, 1);
@@ -1658,6 +2026,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const node = renderBlockToNode(block);
+            if (node && typeof node.setAttribute === 'function') {
+                node.setAttribute('data-block-id', block.id);
+                node.setAttribute('draggable', 'true');
+            }
 
             if (block.type === 'bullet') {
                 if (!activeBulletListElement) {
@@ -1679,7 +2051,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Check if page overflows
-            let isOverflow = currentPageStruct.contentElement.scrollHeight > MAX_CONTENT_HEIGHT;
+            const isTwoCol = currentPageStruct.contentElement.classList.contains('layout-two-column');
+            let isOverflow = false;
+            if (isTwoCol) {
+                isOverflow = currentPageStruct.contentElement.scrollWidth > (currentPageStruct.contentElement.clientWidth + 2);
+            } else {
+                isOverflow = currentPageStruct.contentElement.scrollHeight > MAX_CONTENT_HEIGHT;
+            }
             if (isOverflow) {
                 // We have an overflow. Let's see if we can split this block.
                 let canSplit = (block.type === 'paragraph' || block.type === 'bullet' || block.type === 'box' || block.type === 'table');
@@ -1709,7 +2087,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         let separator = (block.type === 'table') ? '\n' : '';
                         let testMarkdown = words.slice(0, wordCount).join(separator);
                         updateNodeContent(node, block.type, testMarkdown);
-                        return currentPageStruct.contentElement.scrollHeight <= MAX_CONTENT_HEIGHT;
+                        if (isTwoCol) {
+                            return currentPageStruct.contentElement.scrollWidth <= (currentPageStruct.contentElement.clientWidth + 2);
+                        } else {
+                            return currentPageStruct.contentElement.scrollHeight <= MAX_CONTENT_HEIGHT;
+                        }
                     };
 
                     // Binary search for the maximum number of words/rows that fit
@@ -1785,7 +2167,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Insert remaining block into blocks array to be processed next
                             blocks.splice(i + 1, 0, {
                                 type: block.type,
-                                markdown: remainingMarkdown
+                                markdown: remainingMarkdown,
+                                id: block.id
                             });
 
                             splitSuccess = true;
@@ -1859,14 +2242,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update pagesData array with paginated content
         const coverPage = pagesData[0];
-        const newContentPages = pageContentMarkdownArray.map(txt => ({
-            type: 'content',
-            text: txt
-        }));
+        const newContentPages = pageContentMarkdownArray.map((txt, index) => {
+            const oldPage = pagesData[index + 1];
+            const oldLayout = oldPage ? (oldPage.layout || 'single') : 'single';
+            return {
+                type: 'content',
+                text: txt,
+                layout: oldLayout
+            };
+        });
         pagesData = [coverPage, ...newContentPages];
 
         // Recalculate activePageIndex and relative cursor position in the new pagesData!
-        if (isEditorActive) {
+        if (pagesData.length > 1) {
             let accumulatedLength = 0;
             let found = false;
             for (let idx = 1; idx < pagesData.length; idx++) {
@@ -1881,8 +2269,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 accumulatedLength += pageLen + 1;
             }
             if (!found) {
-                activePageIndex = pagesData.length - 1;
-                cursorStart = pagesData[activePageIndex].text.length;
+                activePageIndex = Math.max(1, Math.min(activePageIndex, pagesData.length - 1));
+                cursorStart = pagesData[activePageIndex] ? pagesData[activePageIndex].text.length : 0;
                 cursorEnd = cursorStart;
             }
         }
@@ -1908,10 +2296,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // 6. Sync warning states on left page-tabs sidebar
         renderTabsList();
 
-        // 7. If editor was active, sync the textarea value only if changed, and restore cursor
-        if (isEditorActive) {
+        // 7. Sync the textarea value only if changed, and restore cursor if editor was active
+        if (activePageIndex > 0 && activePageIndex < pagesData.length) {
             if (pageContentInput.value !== pagesData[activePageIndex].text) {
                 pageContentInput.value = pagesData[activePageIndex].text;
+            }
+            if (isEditorActive) {
                 pageContentInput.focus();
                 pageContentInput.setSelectionRange(cursorStart, cursorEnd);
             }
@@ -2053,6 +2443,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Content Wrapper
         const content = document.createElement('div');
         content.className = 'page-content';
+        if (visualPageNum !== 999 && pagesData[visualPageNum] && pagesData[visualPageNum].layout === 'two-column') {
+            content.classList.add('layout-two-column');
+        }
 
         // Footer
         const footer = document.createElement('div');
@@ -2222,24 +2615,30 @@ document.addEventListener('DOMContentLoaded', () => {
         wordCountSpan.textContent = `Words: ${wordCount}`;
     }
 
-    // Markdown text insert tool helper
-    function insertAtCursor(myField, myValue) {
-        if (document.selection) {
-            myField.focus();
-            const sel = document.selection.createRange();
-            sel.text = myValue;
-        } else if (myField.selectionStart || myField.selectionStart === 0) {
-            const startPos = myField.selectionStart;
-            const endPos = myField.selectionEnd;
-            myField.value = myField.value.substring(0, startPos)
-                + myValue
-                + myField.value.substring(endPos, myField.value.length);
-            myField.focus();
-            myField.selectionStart = startPos + myValue.length;
-            myField.selectionEnd = startPos + myValue.length;
+    // Markdown text insert/wrap helper
+    function insertWrappedAtCursor(myField, prefix, suffix) {
+        myField.focus();
+        const startPos = myField.selectionStart;
+        const endPos = myField.selectionEnd;
+        const selectedText = myField.value.substring(startPos, endPos);
+        const replacement = prefix + selectedText + suffix;
+        
+        myField.value = myField.value.substring(0, startPos)
+            + replacement
+            + myField.value.substring(endPos, myField.value.length);
+            
+        // Reset cursor selection
+        if (selectedText.length > 0) {
+            myField.selectionStart = startPos;
+            myField.selectionEnd = startPos + replacement.length;
         } else {
-            myField.value += myValue;
+            myField.selectionStart = startPos + prefix.length;
+            myField.selectionEnd = startPos + prefix.length;
         }
+    }
+
+    function insertAtCursor(myField, myValue) {
+        insertWrappedAtCursor(myField, myValue, '');
     }
 
     // 6.5 LOCALSTORAGE PERSISTENCE AND CUSTOM DESIGN SYNC
@@ -2424,7 +2823,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Exactly one empty Content Page
             {
                 type: 'content',
-                text: ''
+                text: '',
+                layout: 'single'
             }
         ];
         
@@ -2728,6 +3128,353 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPreview();
         switchActivePage(0);
         switchSidebarTab('panel-pages');
+    }
+
+    // ==========================================================================
+    // 9. CLICK-TO-EDIT SYNC (INSPECTOR)
+    // ==========================================================================
+    function cleanTextForSearch(text) {
+        if (!text) return '';
+        // Remove leading/trailing formatting characters, bullets, and emojis
+        return text
+            .replace(/^[🔶🔷🔸🔹♦️💎•●■▪▫\-\*\u2022\u25CF\u25AA\u25AB\s]+/u, '')
+            .trim();
+    }
+
+    function findTextIndexInMarkdown(markdown, searchStr) {
+        if (!markdown || !searchStr) return -1;
+        
+        // Clean search text to alphanumeric/Devanagari characters, cap at 40 chars for precision matching
+        const cleanSearch = searchStr.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '').trim().substring(0, 40);
+        if (!cleanSearch) return -1;
+
+        let cleanMarkdown = "";
+        let indexMap = [];
+        
+        for (let i = 0; i < markdown.length; i++) {
+            const char = markdown[i];
+            if (/[a-zA-Z0-9\u0900-\u097F]/.test(char)) {
+                cleanMarkdown += char;
+                indexMap.push(i);
+            }
+        }
+        
+        let cleanMatchIndex = cleanMarkdown.indexOf(cleanSearch);
+        if (cleanMatchIndex === -1) {
+            // Try matching a shorter 15 char sequence
+            const shortSearch = cleanSearch.substring(0, 15);
+            if (shortSearch.length >= 5) {
+                cleanMatchIndex = cleanMarkdown.indexOf(shortSearch);
+                if (cleanMatchIndex !== -1) {
+                    const start = indexMap[cleanMatchIndex];
+                    const end = indexMap[cleanMatchIndex + shortSearch.length - 1] + 1;
+                    return { start, end };
+                }
+            }
+            return -1;
+        }
+        
+        const start = indexMap[cleanMatchIndex];
+        const end = indexMap[cleanMatchIndex + cleanSearch.length - 1] + 1;
+        return { start, end };
+    }
+
+    pagesContainer.addEventListener('click', (e) => {
+        // Find containing A4 page
+        const pageEl = e.target.closest('.a4-page');
+        if (!pageEl) return;
+
+        const pageNum = parseInt(pageEl.getAttribute('data-page'), 10);
+        if (isNaN(pageNum)) return;
+
+        // 1. Cover Page Redirect
+        if (pageNum === 1) {
+            switchActivePage(0);
+            if (e.target.closest('.cover-title')) {
+                docTitleInput.focus();
+                docTitleInput.select();
+            } else if (e.target.closest('.cover-tagline-box')) {
+                docTaglineInput.focus();
+                docTaglineInput.select();
+            } else if (e.target.closest('.cover-subtitle')) {
+                docSubtitleInput.focus();
+                docSubtitleInput.select();
+            } else {
+                docTitleInput.focus();
+            }
+            return;
+        }
+
+        // 2. End Page Redirect
+        if (pageEl.classList.contains('end-page')) {
+            switchActivePage(pagesData.length);
+            if (e.target.closest('.thankyou-box h1')) {
+                lastTitleInput.focus();
+                lastTitleInput.select();
+            } else if (e.target.closest('.thankyou-box h2')) {
+                lastSubtitleInput.focus();
+                lastSubtitleInput.select();
+            } else if (e.target.closest('.thankyou-box p')) {
+                lastTaglineInput.focus();
+                lastTaglineInput.select();
+            } else {
+                lastTitleInput.focus();
+            }
+            return;
+        }
+
+        // 3. Content Pages Redirect & Substring Sync Highlight
+        // Switch editing panel to corresponding content page
+        switchActivePage(pageNum - 1);
+
+        // Find the specific container block that was clicked
+        const targetBlock = e.target.closest('.section-heading-bar, .topic-container, .bullet-item, .highlight-box, .inserted-image-container, .markdown-table, p.body-text');
+        if (!targetBlock) return;
+
+        // Special handling for Images
+        if (targetBlock.classList.contains('inserted-image-container')) {
+            const imgEl = targetBlock.querySelector('img');
+            if (imgEl) {
+                const src = imgEl.getAttribute('src');
+                let key = null;
+                for (const k in uploadedImages) {
+                    if (uploadedImages[k] === src) {
+                        key = k;
+                        break;
+                    }
+                }
+                const searchKey = key || src;
+                const index = pageContentInput.value.indexOf(searchKey);
+                if (index !== -1) {
+                    const startOfLine = pageContentInput.value.lastIndexOf('\n', index) + 1;
+                    const endOfLine = pageContentInput.value.indexOf('\n', index);
+                    const endPos = endOfLine === -1 ? pageContentInput.value.length : endOfLine;
+                    pageContentInput.focus();
+                    pageContentInput.setSelectionRange(startOfLine, endPos);
+                    
+                    const textBefore = pageContentInput.value.substring(0, startOfLine);
+                    const linesBefore = textBefore.split('\n').length - 1;
+                    const estimatedLineHeight = parseFloat(window.getComputedStyle(pageContentInput).lineHeight) || 22.4;
+                    pageContentInput.scrollTop = Math.max(0, (linesBefore * estimatedLineHeight) - (pageContentInput.clientHeight / 2));
+                }
+            }
+            return;
+        }
+
+        // Standard text elements: headings, bullets, paragraphs, tables
+        let targetText = targetBlock.textContent;
+        if (targetBlock.classList.contains('markdown-table')) {
+            // Find specific table cell clicked for precision
+            const cell = e.target.closest('td, th');
+            if (cell) {
+                targetText = cell.textContent;
+            }
+        }
+
+        const searchText = cleanTextForSearch(targetText);
+        const range = findTextIndexInMarkdown(pageContentInput.value, searchText);
+        if (range && range !== -1) {
+            pageContentInput.focus();
+            pageContentInput.setSelectionRange(range.start, range.end);
+            
+            // Scroll textarea to the line
+            const textBefore = pageContentInput.value.substring(0, range.start);
+            const linesBefore = textBefore.split('\n').length - 1;
+            const estimatedLineHeight = parseFloat(window.getComputedStyle(pageContentInput).lineHeight) || 22.4;
+            pageContentInput.scrollTop = Math.max(0, (linesBefore * estimatedLineHeight) - (pageContentInput.clientHeight / 2));
+        }
+    });
+
+    // ==========================================================================
+    // 10. DRAGGABLE SIDEBAR RESIZER
+    // ==========================================================================
+    const editorPanel = document.querySelector('.editor-panel');
+    const resizeHandle = document.getElementById('sidebar-resize-handle');
+    let isResizing = false;
+
+    if (resizeHandle && editorPanel) {
+        // Load saved width from localStorage if present
+        const savedWidth = localStorage.getItem('editor_panel_width');
+        if (savedWidth) {
+            editorPanel.style.width = savedWidth;
+        }
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            resizeHandle.classList.add('resizing');
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            // Bound the panel resizing width (min 380px, max 800px)
+            const newWidth = Math.max(380, Math.min(800, e.clientX));
+            editorPanel.style.width = `${newWidth}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                resizeHandle.classList.remove('resizing');
+                document.body.style.userSelect = '';
+                // Persist user selected panel width
+                localStorage.setItem('editor_panel_width', editorPanel.style.width);
+            }
+        });
+    }
+
+    // ==========================================================================
+    // 11. DRAG-AND-DROP BLOCK REORDERING LOGIC
+    // ==========================================================================
+    let draggedBlockId = null;
+
+    pagesContainer.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('[data-block-id]');
+        if (target) {
+            draggedBlockId = parseInt(target.getAttribute('data-block-id'), 10);
+            e.dataTransfer.setData('text/plain', draggedBlockId);
+            target.classList.add('dragging-block');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    });
+
+    pagesContainer.addEventListener('dragend', (e) => {
+        const target = e.target.closest('[data-block-id]');
+        if (target) {
+            target.classList.remove('dragging-block');
+        }
+        document.querySelectorAll('[data-block-id]').forEach(el => {
+            el.classList.remove('drag-hover-before', 'drag-hover-after');
+        });
+        draggedBlockId = null;
+    });
+
+    function getClosestBlock(pageContent, clientX, clientY) {
+        const children = pageContent.querySelectorAll('[data-block-id]');
+        let closestNode = null;
+        let minDistance = Infinity;
+
+        children.forEach(child => {
+            const rect = child.getBoundingClientRect();
+            // Calculate distance to the closest point of the bounding box of the child
+            const px = Math.max(rect.left, Math.min(clientX, rect.right));
+            const py = Math.max(rect.top, Math.min(clientY, rect.bottom));
+
+            const dx = clientX - px;
+            const dy = clientY - py;
+            const distance = dx * dx + dy * dy;
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestNode = child;
+            }
+        });
+
+        return closestNode;
+    }
+
+    pagesContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const pageContent = e.target.closest('.page-content');
+        if (!pageContent || draggedBlockId === null) return;
+
+        const target = getClosestBlock(pageContent, e.clientX, e.clientY);
+        if (target) {
+            const dropBlockId = parseInt(target.getAttribute('data-block-id'), 10);
+            if (draggedBlockId === dropBlockId) return;
+
+            // Remove drag hover classes from all other blocks
+            document.querySelectorAll('[data-block-id]').forEach(el => {
+                if (el !== target) {
+                    el.classList.remove('drag-hover-before', 'drag-hover-after');
+                }
+            });
+
+            const rect = target.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            e.dataTransfer.dropEffect = 'move';
+
+            if (e.clientY < midpoint) {
+                target.classList.add('drag-hover-before');
+                target.classList.remove('drag-hover-after');
+            } else {
+                target.classList.add('drag-hover-after');
+                target.classList.remove('drag-hover-before');
+            }
+        }
+    });
+
+    pagesContainer.addEventListener('dragleave', (e) => {
+        const target = e.target.closest('[data-block-id]');
+        if (target) {
+            target.classList.remove('drag-hover-before', 'drag-hover-after');
+        }
+    });
+
+    pagesContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const pageContent = e.target.closest('.page-content');
+        if (!pageContent || draggedBlockId === null) return;
+
+        const target = getClosestBlock(pageContent, e.clientX, e.clientY);
+        if (target) {
+            const dropBlockId = parseInt(target.getAttribute('data-block-id'), 10);
+            if (draggedBlockId === dropBlockId) return;
+
+            const isBefore = target.classList.contains('drag-hover-before');
+            target.classList.remove('drag-hover-before', 'drag-hover-after');
+
+            reorderMarkdownBlocks(draggedBlockId, dropBlockId, isBefore);
+        }
+    });
+
+    function reorderMarkdownBlocks(draggedId, dropId, isBefore) {
+        saveCurrentInputState(); // capture latest values
+        
+        // 1. Get unified content markdown
+        const fullContent = pagesData.slice(1).map(p => p.text).join('\n');
+        
+        // 2. Parse into blocks
+        const blocks = parseTextToBlocks(fullContent);
+        
+        // Assign original IDs to match drag states
+        blocks.forEach((b, idx) => {
+            b.id = idx;
+        });
+        
+        // 3. Find the block objects
+        const draggedBlockIndex = blocks.findIndex(b => b.id === draggedId);
+        if (draggedBlockIndex === -1) return;
+        
+        const [draggedBlock] = blocks.splice(draggedBlockIndex, 1);
+        
+        const dropBlockIndex = blocks.findIndex(b => b.id === dropId);
+        if (dropBlockIndex === -1) return;
+        
+        const insertIndex = isBefore ? dropBlockIndex : dropBlockIndex + 1;
+        blocks.splice(insertIndex, 0, draggedBlock);
+        
+        // 4. Join back to single markdown string
+        const newMarkdown = blocks.map(b => b.markdown).join('\n');
+        
+        // 5. Update pagesData content pages with this unified markdown, preserving all layouts
+        const cover = pagesData[0];
+        const layouts = pagesData.slice(1).map(p => p.layout || 'single');
+        if (layouts.length === 0) {
+            layouts.push('single');
+        }
+        const newPages = layouts.map((lay, idx) => ({
+            type: 'content',
+            text: (idx === 0) ? newMarkdown : '',
+            layout: lay
+        }));
+        pagesData = [cover, ...newPages];
+        
+        // 6. Run preview to reflow, paginate and save
+        renderPreview();
+        saveWorkspaceToLocalStorage();
     }
 
     // 8. INITIALIZE WORKSPACE ON LAUNCH

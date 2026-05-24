@@ -124,10 +124,11 @@ body {
 
 /* Editor Panel (Left Sidebar) */
 .editor-panel {
-    width: 460px;
-    min-width: 420px;
+    width: 480px;
+    min-width: 380px;
+    flex-shrink: 0;
     background-color: var(--ui-sidebar-bg);
-    border-right: 1px solid var(--ui-border);
+    border-right: none;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -137,12 +138,13 @@ body {
 }
 
 .editor-header {
-    padding: 16px 20px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--ui-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-shrink: 0; /* Never squeeze header */
+    flex-shrink: 0;
+    background-color: var(--ui-sidebar-bg);
 }
 
 .logo-area {
@@ -152,27 +154,27 @@ body {
 }
 
 .logo-icon {
-    font-size: 26px;
+    font-size: 20px;
 }
 
 .logo-text h1 {
-    font-size: 19px;
+    font-size: 15px;
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.5px;
 }
 
 .logo-text p {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--ui-text-muted);
 }
 
 .badge-status {
     background: rgba(79, 70, 229, 0.15);
     color: #818cf8;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 20px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     border: 1px solid rgba(79, 70, 229, 0.3);
 }
@@ -194,9 +196,9 @@ body {
     outline: none;
     color: var(--ui-text-muted);
     font-family: inherit;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
-    padding: 10px 4px;
+    padding: 6px 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -220,7 +222,7 @@ body {
 }
 
 .sidebar-tab-btn .tab-icon {
-    font-size: 13px;
+    font-size: 11px;
 }
 
 /* SIDEBAR PANELS LAYOUT */
@@ -589,27 +591,42 @@ body {
 /* Editor Toolbar */
 .editor-toolbar {
     display: flex;
-    gap: 6px;
+    justify-content: center;
+    gap: 4px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--ui-border);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+    -ms-overflow-style: none; /* Hide scrollbar IE */
+    flex-shrink: 0;
+    align-items: center;
+    width: 100%;
+}
+
+.editor-toolbar::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .tool-btn {
-    background-color: var(--ui-card-bg);
-    border: 1px solid var(--ui-border);
-    color: var(--ui-text);
-    padding: 6px 12px;
-    border-radius: var(--border-radius-sm);
-    font-size: 11px;
-    font-weight: 500;
+    min-width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 8px; /* Smooth rounded capsule corners */
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
-    transition: var(--transition-smooth);
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid transparent;
 }
 
 .tool-btn:hover {
-    background-color: var(--ui-accent);
-    border-color: var(--ui-accent);
-    color: #fff;
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .textarea-wrapper {
@@ -627,7 +644,7 @@ body {
     background-color: rgba(0, 0, 0, 0.15);
     border: 1px solid var(--ui-border);
     color: #f1f5f9;
-    padding: 15px;
+    padding: 10px;
     border-radius: var(--border-radius-md);
     font-family: 'Courier New', Courier, monospace;
     font-size: 14px;
@@ -644,7 +661,7 @@ body {
 
 /* Editor Footer & Actions */
 .editor-footer {
-    padding: 12px 20px;
+    padding: 6px 12px;
     border-top: 1px solid var(--ui-border);
     background-color: rgba(0,0,0,0.15);
     flex-shrink: 0; /* Never squeeze action buttons */
@@ -653,9 +670,9 @@ body {
 .stats {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--ui-text-muted);
-    margin-bottom: 10px;
+    margin-bottom: 4px;
 }
 
 #active-page-label {
@@ -671,10 +688,10 @@ body {
 
 .btn {
     width: 100%;
-    padding: 10px 12px;
+    padding: 6px 10px;
     border-radius: var(--border-radius-sm);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     border: none;
@@ -1188,6 +1205,15 @@ p.body-text {
     margin-bottom: 4px;
     line-height: var(--content-line-height, 1.45);
     letter-spacing: var(--content-letter-spacing, 0px) !important;
+}
+
+/* Custom Text Highlight (🖍️ Highlighting) */
+.text-highlight {
+    background-color: rgba(253, 224, 71, 0.45); /* Bright semi-transparent yellow */
+    color: inherit;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-weight: inherit;
 }
 
 /* Bold Label utility */
@@ -1787,5 +1813,457 @@ strong {
 
 .btn-remove-preview:hover {
     background-color: var(--ui-danger-hover);
+}
+
+/* ==========================================================================
+   11. DYNAMIC HIGHLIGHT COLORS & DROPDOWN TOOLBAR
+   ========================================================================== */
+
+
+/* Custom styling for all toolbar buttons */
+#btn-section {
+    background-color: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+    font-size: 14px;
+}
+#btn-section:hover {
+    background-color: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #fff;
+}
+
+#btn-topic {
+    background-color: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: #fde047;
+}
+#btn-topic:hover {
+    background-color: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+    color: #fff;
+}
+
+#btn-bullet {
+    background-color: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.25);
+    color: #c7d2fe;
+    font-size: 16px;
+}
+#btn-bullet:hover {
+    background-color: rgba(167, 139, 250, 0.25);
+    border-color: #a78bfa;
+    color: #fff;
+}
+
+#btn-note {
+    background-color: rgba(234, 179, 8, 0.12);
+    border-color: rgba(234, 179, 8, 0.25);
+    color: #fef08a;
+}
+#btn-note:hover {
+    background-color: rgba(234, 179, 8, 0.25);
+    border-color: #eab308;
+    color: #fff;
+}
+
+#btn-pagebreak {
+    background-color: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #a7f3d0;
+}
+#btn-pagebreak:hover {
+    background-color: rgba(16, 185, 129, 0.25);
+    border-color: #10b981;
+    color: #fff;
+}
+
+#insert-image-btn {
+    background-color: rgba(79, 70, 229, 0.12);
+    border-color: rgba(79, 70, 229, 0.25);
+    color: #c7d2fe;
+}
+#insert-image-btn:hover {
+    background-color: rgba(79, 70, 229, 0.25);
+    border-color: #4f46e5;
+    color: #fff;
+}
+
+#insert-table-btn {
+    background-color: rgba(14, 165, 233, 0.12);
+    border-color: rgba(14, 165, 233, 0.25);
+    color: #bae6fd;
+}
+#insert-table-btn:hover {
+    background-color: rgba(14, 165, 233, 0.25);
+    border-color: #0ea5e9;
+    color: #fff;
+}
+
+#highlight-green-btn {
+    background-color: rgba(74, 222, 128, 0.12);
+    border-color: rgba(74, 222, 128, 0.25);
+    color: #4ade80;
+}
+#highlight-green-btn:hover {
+    background-color: rgba(74, 222, 128, 0.25);
+    border-color: #4ade80;
+    color: #fff;
+}
+
+#highlight-pink-btn {
+    background-color: rgba(244, 114, 182, 0.12);
+    border-color: rgba(244, 114, 182, 0.25);
+    color: #f472b6;
+}
+#highlight-pink-btn:hover {
+    background-color: rgba(244, 114, 182, 0.25);
+    border-color: #f472b6;
+    color: #fff;
+}
+
+/* Multi-color Highlight Rendering Styles */
+.text-highlight.highlight-yellow {
+    background-color: rgba(253, 224, 71, 0.45); /* Bright Yellow */
+}
+.text-highlight.highlight-green {
+    background-color: rgba(74, 222, 128, 0.45); /* Soft Green */
+}
+.text-highlight.highlight-pink {
+    background-color: rgba(244, 114, 182, 0.45); /* Soft Pink */
+}
+.text-highlight.highlight-blue {
+    background-color: rgba(96, 165, 250, 0.45); /* Soft Blue */
+}
+.text-highlight.highlight-orange {
+    background-color: rgba(251, 146, 60, 0.45); /* Soft Orange */
+}
+
+/* ==========================================================================
+   12. CLICK-TO-EDIT INSPECTOR STYLING
+   ========================================================================== */
+.pages-container .section-heading-bar,
+.pages-container .topic-container,
+.pages-container .bullet-item,
+.pages-container .highlight-box,
+.pages-container .inserted-image-container,
+.pages-container .markdown-table,
+.pages-container p.body-text,
+.pages-container .cover-title,
+.pages-container .cover-tagline-box,
+.pages-container .cover-subtitle,
+.pages-container .thankyou-box h1,
+.pages-container .thankyou-box h2,
+.pages-container .thankyou-box p {
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.pages-container .section-heading-bar:hover,
+.pages-container .topic-container:hover,
+.pages-container .bullet-item:hover,
+.pages-container .highlight-box:hover,
+.pages-container .inserted-image-container:hover,
+.pages-container .markdown-table:hover,
+.pages-container p.body-text:hover,
+.pages-container .cover-title:hover,
+.pages-container .cover-tagline-box:hover,
+.pages-container .cover-subtitle:hover,
+.pages-container .thankyou-box h1:hover,
+.pages-container .thankyou-box h2:hover,
+.pages-container .thankyou-box p:hover {
+    outline: 1.5px dashed rgba(79, 70, 229, 0.5) !important;
+    background-color: rgba(79, 70, 229, 0.06) !important;
+    border-radius: 4px;
+}
+
+/* Resize Divider Handle */
+.resize-handle {
+    width: 6px;
+    background-color: var(--ui-border);
+    cursor: col-resize;
+    z-index: 100;
+    transition: background-color 0.25s ease;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(0, 0, 0, 0.5);
+    border-right: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+    background-color: var(--ui-accent);
+}
+
+/* ==========================================================================
+   13. NEW FEATURES: THEME TOGGLE, IMPORT/EXPORT, 2-COLUMNS, SEARCH/REPLACE
+   ========================================================================== */
+
+/* Header Global Actions */
+.header-global-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 12px;
+}
+
+.header-action-btn {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: var(--transition-smooth);
+}
+
+.header-action-btn:hover {
+    background-color: var(--ui-accent);
+    color: #fff;
+    border-color: var(--ui-accent);
+    transform: translateY(-1px);
+}
+
+/* Light Mode Overrides for UI Dashboard */
+body.light-mode {
+    --ui-bg: #f1f5f9;
+    --ui-sidebar-bg: #ffffff;
+    --ui-card-bg: #f8fafc;
+    --ui-border: #cbd5e1;
+    --ui-text: #0f172a;
+    --ui-text-muted: #64748b;
+}
+
+body.light-mode .logo-text h1 {
+    color: var(--ui-text);
+}
+
+body.light-mode .sidebar-tabs-nav {
+    background-color: #f1f5f9;
+}
+
+body.light-mode .sidebar-tab-btn:hover {
+    color: var(--ui-accent);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+body.light-mode .sidebar-tab-btn.active {
+    color: var(--ui-accent);
+    background-color: rgba(79, 70, 229, 0.08);
+}
+
+body.light-mode .page-tab {
+    background: #f8fafc;
+    color: var(--ui-text-muted);
+}
+
+body.light-mode .page-tab:hover {
+    background-color: #cbd5e1;
+    color: var(--ui-text);
+}
+
+body.light-mode .btn-tab-action {
+    background-color: #f8fafc;
+}
+
+body.light-mode .btn-tab-action:hover {
+    background-color: #cbd5e1;
+}
+
+body.light-mode #page-content-input {
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+
+body.light-mode #page-content-input:focus {
+    background-color: #fff;
+}
+
+body.light-mode .editor-footer {
+    background-color: #f8fafc;
+}
+
+body.light-mode .btn-secondary {
+    background-color: #f1f5f9;
+}
+
+body.light-mode .btn-secondary:hover {
+    background-color: #cbd5e1;
+}
+
+body.light-mode .preview-panel {
+    background-color: #cbd5e1;
+}
+
+body.light-mode .preview-header {
+    background-color: #ffffff;
+}
+
+body.light-mode .preview-zoom-controls {
+    background-color: #f1f5f9;
+}
+
+body.light-mode .zoom-btn {
+    color: var(--ui-text);
+}
+
+body.light-mode .vertical-spacer {
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .corner-decor {
+    opacity: 0.9;
+}
+
+/* Page Layout Bar */
+.page-layout-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    background-color: rgba(255, 255, 255, 0.03);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+}
+
+body.light-mode .page-layout-bar {
+    background-color: #f8fafc;
+}
+
+.page-layout-bar span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+}
+
+#page-layout-select {
+    background-color: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition-smooth);
+}
+
+/* Find & Replace Panel */
+.search-replace-panel {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+body.light-mode .search-replace-panel {
+    background-color: #f8fafc;
+}
+
+.search-row {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+
+.search-row input[type="text"] {
+    flex: 1;
+    background-color: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-row.actions {
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.search-action-btn {
+    background-color: var(--ui-card-bg);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.search-action-btn:hover {
+    background-color: var(--ui-accent);
+    color: #fff;
+    border-color: var(--ui-accent);
+}
+
+.search-status {
+    font-size: 9px;
+    color: var(--ui-text-muted);
+    margin-left: auto;
+    font-weight: 500;
+}
+
+/* Two Column Page Layout styles */
+.page-content.layout-two-column {
+    display: block !important; /* Override flex layout so column-count works! */
+    column-count: 2;
+    column-gap: 20px;
+    column-rule: 1px dashed rgba(0, 0, 0, 0.1);
+    height: 100%;
+}
+
+.page-content.layout-two-column > * {
+    margin-bottom: 12px;
+    break-inside: avoid-column; /* Prevent elements from splitting halfway across columns */
+}
+
+.page-content.layout-two-column .section-heading-bar {
+    column-span: all;
+    display: block !important; /* Ensure it is a block container to span columns */
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* ==========================================================================
+   14. DRAG-AND-DROP BLOCK REORDERING STYLES
+   ========================================================================== */
+[data-block-id] {
+    cursor: grab;
+    transition: transform 0.2s ease, border-top 0.15s ease, border-bottom 0.15s ease, opacity 0.15s ease;
+}
+
+[data-block-id]:active {
+    cursor: grabbing;
+}
+
+[data-block-id].dragging-block {
+    opacity: 0.35 !important;
+    transform: scale(0.98);
+    outline: 1.5px dashed var(--ui-accent) !important;
+    background-color: rgba(79, 70, 229, 0.05) !important;
+}
+
+[data-block-id].drag-hover-before {
+    border-top: 3px solid var(--ui-accent) !important;
+    border-radius: 4px 4px 0 0;
+}
+
+[data-block-id].drag-hover-after {
+    border-bottom: 3px solid var(--ui-accent) !important;
+    border-radius: 0 0 4px 4px;
 }
 

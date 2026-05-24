@@ -24,6 +24,12 @@
                         <p>Page-Wise Workspace</p>
                     </div>
                 </div>
+                <div class="header-global-actions">
+                    <button id="theme-toggle-btn" class="header-action-btn" title="Toggle Editor Theme (थीम बदलें)">🌙</button>
+                    <button id="import-project-btn" class="header-action-btn" title="Import Project (.raaz) (फ़ाइल लोड करें)">📥</button>
+                    <button id="export-project-btn" class="header-action-btn" title="Export Project (.raaz) (फ़ाइल सेव करें)">📤</button>
+                    <input type="file" id="import-project-file" accept=".raaz" style="display: none;">
+                </div>
                 <div class="badge-status">Workspace Active</div>
             </header>
 
@@ -120,15 +126,40 @@
 
                         <!-- Zone 2: Content Page Editor (Visible for standard pages) -->
                         <div id="content-editor-zone" class="editor-zone active">
+                            <div class="page-layout-bar">
+                                <span>Page Layout (पेज लेआउट):</span>
+                                <div style="display: flex; gap: 4px; align-items: center;">
+                                    <select id="page-layout-select">
+                                        <option value="single">Single Column (एक कॉलम)</option>
+                                        <option value="two-column">Two Columns (दो कॉलम)</option>
+                                    </select>
+                                    <button id="apply-layout-all-btn" class="search-action-btn" style="font-size: 9px; padding: 3px 6px;" title="Apply this layout to all content pages (सभी पेजों पर लागू करें)">Apply to All</button>
+                                </div>
+                            </div>
                             <div class="editor-toolbar">
-                                <button class="tool-btn" data-prefix="# " title="Add Main Section Header"># Section</button>
-                                <button class="tool-btn" data-prefix="## 🔶 " title="Add Topic Title">🔶 Topic</button>
-                                <button class="tool-btn" data-prefix="• " title="Add Bullet Point">• Bullet</button>
-                                <button class="tool-btn" data-prefix="> " title="Add Highlight Box">💡 Note</button>
-                                <button class="tool-btn" data-prefix="&#10;[pagebreak]&#10;" title="Insert Page Break" style="background-color: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #a7f3d0;">📄 Page Break</button>
-                                <button class="tool-btn" id="insert-image-btn" title="Insert Photo/Image" style="background-color: rgba(79, 70, 229, 0.15); border-color: rgba(79, 70, 229, 0.3); color: #a5b4fc;">📷 Image</button>
-                                <button class="tool-btn" id="insert-table-btn" title="Insert Table (तालिका जोड़ें)" style="background-color: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fde047;">📊 Table</button>
+                                <button class="tool-btn" id="btn-section" data-prefix="# " title="Add Section Header (# Section)">#</button>
+                                <button class="tool-btn" id="btn-topic" data-prefix="## 🔶 " title="Add Topic Title (🔶 Topic)">🔶</button>
+                                <button class="tool-btn" id="btn-bullet" data-prefix="• " title="Add Bullet Point (• Bullet)">•</button>
+                                <button class="tool-btn" id="btn-note" data-prefix="> " title="Add Highlight Box (💡 Note)">💡</button>
+                                <button class="tool-btn" id="highlight-green-btn" data-prefix="==green|" data-suffix="==" title="Highlight (Green)">G</button>
+                                <button class="tool-btn" id="highlight-pink-btn" data-prefix="==pink|" data-suffix="==" title="Highlight (Pink)">P</button>
+                                <button class="tool-btn" id="btn-pagebreak" data-prefix="&#10;[pagebreak]&#10;" title="Insert Page Break">📄</button>
+                                <button class="tool-btn" id="insert-image-btn" title="Insert Photo/Image">📷</button>
+                                <button class="tool-btn" id="insert-table-btn" title="Insert Table (तालिका जोड़ें)">📊</button>
+                                <button class="tool-btn" id="btn-search-toggle" title="Find and Replace (ढूंढे और बदलें)">🔍</button>
                                 <input type="file" id="editor-image-upload" accept="image/*" style="display: none;">
+                            </div>
+                            <div id="search-replace-panel" class="search-replace-panel" style="display: none;">
+                                <div class="search-row">
+                                    <input type="text" id="find-input" placeholder="Find text (खोजें)...">
+                                    <input type="text" id="replace-input" placeholder="Replace with (बदलें)...">
+                                </div>
+                                <div class="search-row actions">
+                                    <button id="find-btn" class="search-action-btn">Find Next</button>
+                                    <button id="replace-btn" class="search-action-btn">Replace</button>
+                                    <button id="replace-all-btn" class="search-action-btn">Replace All</button>
+                                    <span id="search-status" class="search-status"></span>
+                                </div>
                             </div>
                             <div class="textarea-wrapper">
                                 <textarea id="page-content-input" spellcheck="false" placeholder="Active page ka text yahan paste karein ya likhna shuru karein..."></textarea>
@@ -445,6 +476,9 @@
                 </div>
             </footer>
         </aside>
+
+        <!-- Resize Handle Divider -->
+        <div class="resize-handle" id="sidebar-resize-handle" title="Drag to resize editor panel"></div>
 
         <!-- Right Panel: Live A4 Preview Canvas -->
         <main class="preview-panel">
