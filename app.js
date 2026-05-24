@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const wordCountSpan = document.getElementById('word-count');
     const activePageLabel = document.getElementById('active-page-label');
     
-    const loadSampleBtn = document.getElementById('load-sample-btn');
     const clearAllBtn = document.getElementById('clear-all-btn');
     const printPdfBtn = document.getElementById('print-pdf-btn');
     
@@ -206,13 +205,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Debounce timer to avoid lagging when typing rapidly
+    let renderTimeout = null;
+    function debouncedRenderAndSave() {
+        clearTimeout(renderTimeout);
+        renderTimeout = setTimeout(() => {
+            renderPreview();
+            saveWorkspaceToLocalStorage();
+        }, 200); // 200ms is a sweet spot for smooth typing and responsive preview
+    }
+
     // Live update when writing on content pages
     pageContentInput.addEventListener('input', () => {
         if (activePageIndex > 0) {
             pagesData[activePageIndex].text = pageContentInput.value;
-            renderPreview();
             updateStats();
-            saveWorkspaceToLocalStorage();
+            debouncedRenderAndSave();
         }
     });
 
@@ -223,8 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pagesData[0].title = docTitleInput.value;
                 pagesData[0].tagline = docTaglineInput.value;
                 pagesData[0].subtitle = docSubtitleInput.value;
-                renderPreview();
-                saveWorkspaceToLocalStorage();
+                debouncedRenderAndSave();
             }
         });
     });
@@ -236,8 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastPageData.title = lastTitleInput.value;
                 lastPageData.subtitle = lastSubtitleInput.value;
                 lastPageData.tagline = lastTaglineInput.value;
-                renderPreview();
-                saveWorkspaceToLocalStorage();
+                debouncedRenderAndSave();
             }
         });
     });
@@ -544,12 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Action buttons
     addPageBtn.addEventListener('click', addPage);
     deletePageBtn.addEventListener('click', deleteActivePage);
-    loadSampleBtn.addEventListener('click', () => {
-        if (confirm("Kya aap sach me workspace ko sample data par reset karna chahte hain? Aapka saara custom content aur settings delete ho jayega.")) {
-            localStorage.removeItem('loka_nota_workspace_state');
-            loadDefaultSampleWorkspace();
-        }
-    });
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', () => {
             if (confirm("Kya aap sach me saare content pages ka text aur settings saaf karna chahte hain?")) {
@@ -1081,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) return '';
         
         // 1. Insert newlines before any diamond emojis unless preceded by '#' (markdown headings)
-        let formatted = text.replace(/([^\n#])\s*(🔶|🔷|🔸|🔹|♦️|💎)/g, '$1\n$2');
+        let formatted = text.replace(/([^\n#\s])\s*(🔶|🔷|🔸|🔹|♦️|💎)/g, '$1\n$2');
         
         // 2. Insert newlines before bullet points if not already preceded by one
         formatted = formatted.replace(/([^\n])\s*(•|●|■|▪|▫|[\u2022\u25CF\u25AA\u25AB])/g, '$1\n$2');
@@ -1105,8 +1105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function parseTextToBlocks(text) {
-        // Trim trailing newlines to prevent trailing empty spaces from causing empty pages
-        text = (text || '').trimEnd();
+        // Preserving trailing spaces and newlines to prevent cursor jumping
+        text = text || '';
         text = preProcessText(text);
         const lines = text.split('\n');
         const blocks = [];
@@ -1583,6 +1583,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render right-side actual A4 pages sequentially
     function renderPreview() {
+        // Cancel any pending debounced render since we are executing a render now
+        if (typeof renderTimeout !== 'undefined' && renderTimeout !== null) {
+            clearTimeout(renderTimeout);
+        }
         // Measure dynamic available height of page content container
         const tempPageStruct = createContentPageDOM(999, 999);
         tempPageStruct.pageElement.style.position = 'absolute';
@@ -1904,12 +1908,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 6. Sync warning states on left page-tabs sidebar
         renderTabsList();
 
-        // 7. If editor was active, sync the textarea value and restore cursor
+        // 7. If editor was active, sync the textarea value only if changed, and restore cursor
         if (isEditorActive) {
-            pageContentInput.value = pagesData[activePageIndex].text;
+            if (pageContentInput.value !== pagesData[activePageIndex].text) {
+                pageContentInput.value = pagesData[activePageIndex].text;
+                pageContentInput.focus();
+                pageContentInput.setSelectionRange(cursorStart, cursorEnd);
+            }
             activePageLabel.textContent = `Editing: Page ${activePageIndex}`;
-            pageContentInput.focus();
-            pageContentInput.setSelectionRange(cursorStart, cursorEnd);
         }
     }
 
@@ -2404,15 +2410,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearWorkspaceContent() {
+        // Keep the cover page metadata as is
+        const currentCover = pagesData[0] || {
+            type: 'cover',
+            title: 'लोकबंधु',
+            tagline: 'कोचिंग नहीं क्रांति',
+            subtitle: 'राजस्थान समसामयिकी',
+            theme: 'maroon-gold'
+        };
+
         pagesData = [
-            // Cover Page Meta
-            {
-                type: 'cover',
-                title: 'लोकबंधु',
-                tagline: 'कोचिंग नहीं क्रांति',
-                subtitle: 'राजस्थान समसामयिकी',
-                theme: 'maroon-gold'
-            },
+            currentCover,
             // Exactly one empty Content Page
             {
                 type: 'content',
@@ -2420,12 +2428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         ];
         
-        lastPageData = {
-            title: 'THANK YOU',
-            subtitle: 'लोकबंधु',
-            tagline: 'कोचिंग नहीं क्रांति'
-        };
-        
+        // Reset active index to cover page
         activePageIndex = 0;
         
         // Sync values to cover fields in the UI
@@ -2434,67 +2437,11 @@ document.addEventListener('DOMContentLoaded', () => {
         docSubtitleInput.value = pagesData[0].subtitle;
         docThemeInput.value = pagesData[0].theme;
         
-        // Sync values to last page fields in UI
-        lastTitleInput.value = lastPageData.title;
-        lastSubtitleInput.value = lastPageData.subtitle;
-        lastTaglineInput.value = lastPageData.tagline;
-        
-        // Reset Spacings/Font UI options to normal defaults
-        contentFontSize = 13.5;
-        fontSizeValSpan.textContent = `13.5px`;
-        document.documentElement.style.setProperty('--content-font-size', `13.5px`);
-        
-        globalFontStyleSelect.value = 'modern-sans';
-        globalFontWeightSelect.value = '700';
-        globalLineSpacingSelect.value = '1.45';
-        globalLetterSpacingSelect.value = '0px';
-        
-        document.documentElement.style.setProperty('--content-font-weight', '700');
-        document.documentElement.style.setProperty('--content-line-height', '1.45');
-        document.documentElement.style.setProperty('--content-letter-spacing', '0px');
-        document.body.className = '';
-        
-        // Clear watermark settings
-        watermarkTypeSelect.value = 'none';
-        watermarkSettings.type = 'none';
-        watermarkSettings.imageSrc = '';
-        watermarkSettings.text = 'लोकबंधु';
-        watermarkTextInput.value = 'लोकबंधु';
-        watermarkPositionSelect.value = 'center';
-        watermarkSettings.position = 'center';
-        watermarkRotationSelect.value = '-45';
-        watermarkSettings.rotation = '-45';
-        watermarkOpacitySlider.value = '15';
-        watermarkOpacityVal.textContent = '15%';
-        watermarkSettings.opacity = 0.15;
-        watermarkSizeSlider.value = '60';
-        watermarkSizeVal.textContent = '60px';
-        watermarkSettings.size = 60;
-        watermarkColorInput.value = '#000000';
-        watermarkSettings.color = '#000000';
-        
-        watermarkTextGroup.style.display = 'none';
-        watermarkColorGroup.style.display = 'none';
-        watermarkImageGroup.style.display = 'none';
-        
         // Clear uploaded images
         uploadedImages = {};
         imageCounter = 1;
-
-        // Clear social settings
-        socialSettings = {
-            telegramText: '@lokbandhu',
-            youtubeText: 'Lokbandhu Coaching',
-            fontSize: 11,
-            placement: 'split'
-        };
-        if (footerTelegramInput) footerTelegramInput.value = '@lokbandhu';
-        if (footerYoutubeInput) footerYoutubeInput.value = 'Lokbandhu Coaching';
-        if (footerSocialSizeInput) footerSocialSizeInput.value = 11;
-        if (footerSocialSizeVal) footerSocialSizeVal.textContent = '11px';
-        if (footerSocialPlacementSelect) footerSocialPlacementSelect.value = 'split';
         
-        // Reset Theme properties
+        // Re-apply Theme properties to ensure sync
         applyTheme(pagesData[0].theme);
         
         // Save to LocalStorage, Re-render, Switch to Cover Tab
