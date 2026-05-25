@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loka Nota - Premium Page Workspace</title>
+    <title>Samyak - by Raaz Kushwah</title>
     <!-- Google Fonts: Poppins (modern UI), Noto Sans Devanagari (Hindi Body), Rozha One (Calligraphy/Display Serif), Martel (Traditional serif) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,14 +20,15 @@
                 <div class="logo-area">
                     <span class="logo-icon">📚</span>
                     <div class="logo-text">
-                        <h1>लोकबंधु</h1>
-                        <p>Page-Wise Workspace</p>
+                        <h1>सम्यक्</h1>
+                        <p>by Raaz Kushwah</p>
                     </div>
                 </div>
                 <div class="header-global-actions">
                     <button id="theme-toggle-btn" class="header-action-btn" title="Toggle Editor Theme (थीम बदलें)">🌙</button>
                     <button id="import-project-btn" class="header-action-btn" title="Import Project (.raaz) (फ़ाइल लोड करें)">📥</button>
                     <button id="export-project-btn" class="header-action-btn" title="Export Project (.raaz) (फ़ाइल सेव करें)">📤</button>
+                    <button id="compile-magazines-btn" class="header-action-btn" title="Compile Monthly Magazine (मासिक मैगज़ीन कंपाइल करें)">🛠️</button>
                     <input type="file" id="import-project-file" accept=".raaz" style="display: none;">
                 </div>
                 <div class="badge-status">Workspace Active</div>
@@ -77,7 +78,7 @@
                             <div class="settings-grid">
                                 <div class="input-group full-width">
                                     <label for="doc-title">Main Banner Title (मुख्य नाम)</label>
-                                    <input type="text" id="doc-title" value="लोकबंधु">
+                                    <input type="text" id="doc-title" value="सम्यक्">
                                 </div>
                                 <div class="input-group full-width">
                                     <label for="doc-tagline">Tagline Banner (टैगलाइन)</label>
@@ -90,7 +91,7 @@
                                 <div class="input-group full-width">
                                     <label for="doc-theme">Visual Theme (दस्तावेज़ की थीम)</label>
                                     <select id="doc-theme">
-                                        <option value="maroon-gold">Loka Nota Maroon & Gold</option>
+                                        <option value="maroon-gold">Samyak Maroon & Gold</option>
                                         <option value="royal-navy">Royal Navy & Gold</option>
                                         <option value="emerald-cream">Emerald Forest & Cream</option>
                                         <option value="midnight-gold">Midnight Slate & Gold</option>
@@ -112,7 +113,7 @@
                                 </div>
                                 <div class="input-group full-width">
                                     <label for="last-subtitle">Sub Heading (उपशीर्षक)</label>
-                                    <input type="text" id="last-subtitle" value="लोकबंधु">
+                                    <input type="text" id="last-subtitle" value="सम्यक्">
                                 </div>
                                 <div class="input-group full-width">
                                     <label for="last-tagline">Description / Tagline (विवरण)</label>
@@ -126,6 +127,18 @@
 
                         <!-- Zone 2: Content Page Editor (Visible for standard pages) -->
                         <div id="content-editor-zone" class="editor-zone active">
+                            <div class="page-template-bar">
+                                <span>Page Template (पेज वातावरण):</span>
+                                <select id="page-template-select">
+                                    <option value="" disabled selected>Select Page Template...</option>
+                                    <option value="standard">Standard Content (सामान्य लेख)</option>
+                                    <option value="personality">Personality Feature (चर्चित व्यक्तित्व)</option>
+                                    <option value="stats-table">Comparison & Stats (तुलना व आँकड़े)</option>
+                                    <option value="facts-grid">Quick Facts Grid (तथ्य ग्रिड)</option>
+                                    <option value="announcement">Highlights & Alert (विशेष सूचना)</option>
+                                    <option value="blank">Blank Page (खाली पेज)</option>
+                                </select>
+                            </div>
                             <div class="page-layout-bar">
                                 <span>Page Layout (पेज लेआउट):</span>
                                 <div style="display: flex; gap: 4px; align-items: center;">
@@ -177,7 +190,7 @@
                                 <div class="option-item">
                                     <label><span class="opt-icon">✍️</span> Font Style (शैली):</label>
                                     <select id="global-font-style" class="opt-select">
-                                        <option value="modern-sans">Lokbandhu Signature (Yatra & Mukta)</option>
+                                        <option value="modern-sans">Samyak Signature (Yatra & Mukta)</option>
                                         <option value="poppins-sans">Modern Sans (Poppins & Noto Sans)</option>
                                         <option value="traditional-serif">Traditional Serif (Martel & Noto Serif)</option>
                                         <option value="hybrid-style">Hybrid (Rozha One & Noto Sans)</option>
@@ -237,7 +250,7 @@
                                 <!-- Text Watermark Settings -->
                                 <div id="watermark-text-group" class="option-item full-width-opt" style="display: none;">
                                     <label><span class="opt-icon">📝</span> Watermark Text:</label>
-                                    <input type="text" id="watermark-text" class="opt-select" value="लोकबंधु" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
+                                    <input type="text" id="watermark-text" class="opt-select" value="सम्यक्" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
                                 </div>
 
                                 <!-- Image Watermark Settings -->
@@ -291,11 +304,11 @@
                             <div class="options-grid">
                                 <div class="option-item full-width-opt">
                                     <label><span class="opt-icon">✈️</span> Telegram (चैनल हैंडल):</label>
-                                    <input type="text" id="footer-telegram" class="opt-select" value="@lokbandhu" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
+                                    <input type="text" id="footer-telegram" class="opt-select" value="@samyak" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
                                 </div>
                                 <div class="option-item full-width-opt">
                                     <label><span class="opt-icon">▶️</span> YouTube (चैनल नाम):</label>
-                                    <input type="text" id="footer-youtube" class="opt-select" value="Lokbandhu Coaching" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
+                                    <input type="text" id="footer-youtube" class="opt-select" value="Samyak Coaching" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff;">
                                 </div>
                                 <div class="option-item">
                                     <label><span class="opt-icon">📐</span> Font Size (<span id="footer-social-size-val">11px</span>):</label>
@@ -337,6 +350,13 @@
                                 <div class="option-item full-width-opt">
                                     <label><span class="opt-icon">📐</span> Font Size (<span id="design-section-size-val">18px</span>):</label>
                                     <input type="range" id="design-section-size" min="12" max="32" value="18" style="width: 100%; accent-color: var(--ui-accent);">
+                                </div>
+                                <div class="option-item full-width-opt">
+                                    <label><span class="opt-icon">📍</span> Placement (संरेखण):</label>
+                                    <select id="design-section-align" class="opt-select">
+                                        <option value="left" selected>Left Align (बायें)</option>
+                                        <option value="center">Center Align (मध्य)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -478,7 +498,9 @@
         </aside>
 
         <!-- Resize Handle Divider -->
-        <div class="resize-handle" id="sidebar-resize-handle" title="Drag to resize editor panel"></div>
+        <div class="resize-handle" id="sidebar-resize-handle" title="Drag to resize editor panel">
+            <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Collapse Sidebar">◀</button>
+        </div>
 
         <!-- Right Panel: Live A4 Preview Canvas -->
         <main class="preview-panel">
@@ -619,6 +641,55 @@
             <div class="modal-footer">
                 <button type="button" id="cancel-table-btn" class="btn btn-secondary">Cancel</button>
                 <button type="button" id="insert-table-confirm-btn" class="btn btn-primary">Insert Table</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Magazine Compiler Modal -->
+    <div id="compiler-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🛠️ Smart Magazine Compiler (मासिक मैगज़ीन कंपाइलर)</h3>
+                <button id="close-compiler-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="cover-editor-helper" style="margin-bottom: 15px;">
+                    <p>💡 <strong>Compiler Info:</strong> Alag-alag parts (e.g. Part 1, 2, 3) ki `.raaz` files upload karein. Compiler inke headings aur content ko smart-merge karke ek single monthly magazine generate kar dega.</p>
+                </div>
+                
+                <div class="settings-grid" style="gap: 15px;">
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label>File 1 (Part 1 / Days 1-10):</label>
+                        <input type="file" id="compiler-file-1" accept=".raaz" class="opt-select" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff; padding: 4px 8px; width: 100%;">
+                    </div>
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label>File 2 (Part 2 / Days 11-20):</label>
+                        <input type="file" id="compiler-file-2" accept=".raaz" class="opt-select" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff; padding: 4px 8px; width: 100%;">
+                    </div>
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label>File 3 (Part 3 / Days 21-30 - Optional):</label>
+                        <input type="file" id="compiler-file-3" accept=".raaz" class="opt-select" style="background-color: #16161e; border: 1px solid var(--ui-border); color: #fff; padding: 4px 8px; width: 100%;">
+                    </div>
+                    
+                    <hr style="grid-column: span 2; border: 0; border-top: 1px solid var(--ui-border); width: 100%; margin: 10px 0;">
+                    
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label for="compiled-title">New Magazine Title (मुख्य नाम):</label>
+                        <input type="text" id="compiled-title" value="सम्यक्" style="width: 100%;">
+                    </div>
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label for="compiled-tagline">New Tagline (टैगलाइन):</label>
+                        <input type="text" id="compiled-tagline" value="कोचिंग नहीं क्रांति" style="width: 100%;">
+                    </div>
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label for="compiled-subtitle">New Subtitle / Date (उपशीर्षक / तिथि):</label>
+                        <input type="text" id="compiled-subtitle" value="राजस्थान समसामयिकी : मई 2026 - संपूर्ण मासिक" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-compiler-btn" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="compile-confirm-btn" class="btn btn-primary" disabled>Compile & Merge</button>
             </div>
         </div>
     </div>

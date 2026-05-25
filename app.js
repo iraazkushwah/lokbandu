@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LOKA NOTA - PAGE-BY-PAGE WORKSPACE CONTROLLER
+   SAMYAK - PAGE-BY-PAGE WORKSPACE CONTROLLER
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const importProjectFile = document.getElementById('import-project-file');
     const pageLayoutSelect = document.getElementById('page-layout-select');
     const applyLayoutAllBtn = document.getElementById('apply-layout-all-btn');
+    const pageTemplateSelect = document.getElementById('page-template-select');
     const btnSearchToggle = document.getElementById('btn-search-toggle');
     const searchReplacePanel = document.getElementById('search-replace-panel');
     const findInput = document.getElementById('find-input');
@@ -23,6 +24,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const replaceBtn = document.getElementById('replace-btn');
     const replaceAllBtn = document.getElementById('replace-all-btn');
     const searchStatus = document.getElementById('search-status');
+    
+    // Compiler DOM Elements
+    const compileMagazinesBtn = document.getElementById('compile-magazines-btn');
+    const compilerModal = document.getElementById('compiler-modal');
+    const closeCompilerModalBtn = document.getElementById('close-compiler-modal-btn');
+    const cancelCompilerBtn = document.getElementById('cancel-compiler-btn');
+    const compileConfirmBtn = document.getElementById('compile-confirm-btn');
+    const compilerFile1 = document.getElementById('compiler-file-1');
+    const compilerFile2 = document.getElementById('compiler-file-2');
+    const compilerFile3 = document.getElementById('compiler-file-3');
+    const compiledTitleInput = document.getElementById('compiled-title');
+    const compiledTaglineInput = document.getElementById('compiled-tagline');
+    const compiledSubtitleInput = document.getElementById('compiled-subtitle');
     
     const coverEditorZone = document.getElementById('cover-editor-zone');
     const contentEditorZone = document.getElementById('content-editor-zone');
@@ -86,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const designSectionText = document.getElementById('design-section-text');
     const designSectionSize = document.getElementById('design-section-size');
     const designSectionSizeVal = document.getElementById('design-section-size-val');
+    const designSectionAlign = document.getElementById('design-section-align');
 
     const designTopicText = document.getElementById('design-topic-text');
     const designTopicBorder = document.getElementById('design-topic-border');
@@ -128,11 +143,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let zoomLevel = 100;      // Default scale is 100%
     let contentFontSize = 13.5; // Default body text font size is 13.5px
     let MAX_CONTENT_HEIGHT = 910; // Measured dynamically inside renderPreview
+    let cachedMaxContentHeight = null; // Cache to prevent layout thrashing
+    let draggedTOCSectionName = null; // Store dragged section name for TOC reordering
 
     // Last Page State
     let lastPageData = {
         title: 'THANK YOU',
-        subtitle: 'लोकबंधु',
+        subtitle: 'सम्यक्',
         tagline: 'कोचिंग नहीं क्रांति'
     };
 
@@ -142,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Premium Watermark State
     let watermarkSettings = {
         type: 'none',       // 'none' | 'text' | 'image'
-        text: 'लोकबंधु',
+        text: 'सम्यक्',
         imageSrc: '',       // Base64 string of uploaded logo image
         position: 'center',  // 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
         rotation: '-45',     // Angle in degrees
@@ -157,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         topicMarginTop: '6px',
         topicMarginBottom: '3px',
         topicAlignment: 'flex-start',
+        sectionAlignment: 'left',
         
         // Page numbers
         pageNumPlacement: 'bottom-center',
@@ -170,8 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2.1 Social Settings State
     let socialSettings = {
-        telegramText: '@lokbandhu',
-        youtubeText: 'Lokbandhu Coaching',
+        telegramText: '@samyak',
+        youtubeText: 'Samyak Coaching',
         fontSize: 11,
         placement: 'split'
     };
@@ -228,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTimeout = setTimeout(() => {
             renderPreview();
             saveWorkspaceToLocalStorage();
-        }, 200); // 200ms is a sweet spot for smooth typing and responsive preview
+        }, 200); // 200ms debounce for much faster typing feedback and responsive preview
     }
 
     // Live update when writing on content pages
@@ -528,10 +546,240 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Magazine Compiler Modal Event Listeners
+    if (compileMagazinesBtn && compilerModal) {
+        compileMagazinesBtn.addEventListener('click', () => {
+            // Reset files
+            compilerFile1.value = '';
+            compilerFile2.value = '';
+            compilerFile3.value = '';
+            compileConfirmBtn.disabled = true;
+
+            // Pre-populate metadata fields from current cover page
+            if (pagesData[0]) {
+                compiledTitleInput.value = pagesData[0].title || 'सम्यक्';
+                compiledTaglineInput.value = pagesData[0].tagline || 'कोचिंग नहीं क्रांति';
+                compiledSubtitleInput.value = pagesData[0].subtitle || 'राजस्थान समसामयिकी';
+            }
+
+            // Show compiler modal
+            compilerModal.classList.add('active');
+        });
+
+        const hideCompilerModal = () => {
+            compilerModal.classList.remove('active');
+        };
+        closeCompilerModalBtn.addEventListener('click', hideCompilerModal);
+        cancelCompilerBtn.addEventListener('click', hideCompilerModal);
+
+        compilerModal.addEventListener('click', (e) => {
+            if (e.target === compilerModal) {
+                hideCompilerModal();
+            }
+        });
+
+        // Function to validate files (must have at least File 1 and File 2)
+        const validateCompilerFiles = () => {
+            const file1 = compilerFile1.files[0];
+            const file2 = compilerFile2.files[0];
+            compileConfirmBtn.disabled = !(file1 && file2);
+        };
+
+        compilerFile1.addEventListener('change', validateCompilerFiles);
+        compilerFile2.addEventListener('change', validateCompilerFiles);
+        compilerFile3.addEventListener('change', validateCompilerFiles);
+
+        // Merge confirm action
+        compileConfirmBtn.addEventListener('click', () => {
+            const file1 = compilerFile1.files[0];
+            const file2 = compilerFile2.files[0];
+            const file3 = compilerFile3.files[0];
+
+            if (!file1 || !file2) {
+                alert('Part 1 aur Part 2 dono files select karna zaroori hai!');
+                return;
+            }
+
+            // Read all files asynchronously
+            const readState = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const state = JSON.parse(e.target.result);
+                            resolve(state);
+                        } catch (err) {
+                            reject(new Error(`File "${file.name}" read karne me error: ${err.message}`));
+                        }
+                    };
+                    reader.onerror = () => reject(new Error(`File "${file.name}" loading issue.`));
+                    reader.readAsText(file);
+                });
+            };
+
+            const promises = [readState(file1), readState(file2)];
+            if (file3) {
+                promises.push(readState(file3));
+            }
+
+            compileConfirmBtn.disabled = true;
+            compileConfirmBtn.textContent = 'Compiling...';
+
+            Promise.all(promises)
+                .then((fileStates) => {
+                    const newMeta = {
+                        title: compiledTitleInput.value.trim() || 'सम्यक्',
+                        tagline: compiledTaglineInput.value.trim() || 'कोचिंग नहीं क्रांति',
+                        subtitle: compiledSubtitleInput.value.trim() || 'राजस्थान समसामयिकी'
+                    };
+
+                    compileAndMergeMagazines(fileStates, newMeta);
+                    hideCompilerModal();
+                    alert('Magazines smart-merge ho gayi hain aur monthly edition load ho chuka hai! (मासिक मैगज़ीन सफलतापूर्वक मर्ज हो गई है!)');
+                })
+                .catch((err) => {
+                    alert(err.message);
+                })
+                .finally(() => {
+                    compileConfirmBtn.disabled = false;
+                    compileConfirmBtn.textContent = 'Compile & Merge';
+                });
+        });
+    }
+
+    function compileAndMergeMagazines(fileStates, newMeta) {
+        let mergedImages = {};
+        let sectionOrder = [];
+        // Map: normalizedSectionName -> { originalTitle: string, blocksByFile: [ [blocks from file 1], [blocks from file 2], [blocks from file 3] ] }
+        let sectionsData = {}; 
+
+        // 1. Merge images from all loaded file states
+        fileStates.forEach(state => {
+            if (state.uploadedImages) {
+                Object.assign(mergedImages, state.uploadedImages);
+            }
+        });
+
+        // Helper to normalize section titles for matching (e.g. "योजनाएँ एवं नीतियाँ" matches "योजनाएँ एवं नीतियां")
+        function normalizeSecName(name) {
+            if (!name) return '';
+            return name.replace(/^#+\s*/, '')
+                       .replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '')
+                       .trim()
+                       .toLowerCase();
+        }
+
+        // 2. Parse blocks from each file and group them by normalized section heading
+        fileStates.forEach((state, fileIdx) => {
+            // Join all content pages text
+            const fullContent = (state.pagesData || []).slice(1).map(p => p.text).join('\n');
+            const blocks = parseTextToBlocks(fullContent);
+
+            let currentSectionNorm = '__intro__';
+            let currentSectionOrig = '';
+
+            // Ensure intro section structure exists
+            if (!sectionsData[currentSectionNorm]) {
+                sectionsData[currentSectionNorm] = {
+                    originalTitle: '',
+                    blocksByFile: [[], [], []]
+                };
+                sectionOrder.push(currentSectionNorm);
+            }
+
+            blocks.forEach(block => {
+                if (block.type === 'section') {
+                    const origTitle = block.markdown.trim();
+                    currentSectionOrig = origTitle;
+                    currentSectionNorm = normalizeSecName(origTitle);
+
+                    if (!sectionsData[currentSectionNorm]) {
+                        sectionsData[currentSectionNorm] = {
+                            originalTitle: origTitle,
+                            blocksByFile: [[], [], []]
+                        };
+                        sectionOrder.push(currentSectionNorm);
+                    }
+                } else {
+                    sectionsData[currentSectionNorm].blocksByFile[fileIdx].push(block);
+                }
+            });
+        });
+
+        // 3. Reconstruct unified markdown by stitching sections chronologically
+        let mergedMarkdownParts = [];
+
+        sectionOrder.forEach(secNorm => {
+            const secInfo = sectionsData[secNorm];
+            const blocksFromFiles = secInfo.blocksByFile;
+
+            // Check if there is any content in this section across all files
+            const totalBlocks = blocksFromFiles[0].length + blocksFromFiles[1].length + blocksFromFiles[2].length;
+            if (totalBlocks === 0) return;
+
+            // Add section header (except for intro)
+            if (secNorm !== '__intro__' && secInfo.originalTitle) {
+                mergedMarkdownParts.push(secInfo.originalTitle);
+            }
+
+            // Append blocks from File 1, then File 2, then File 3
+            for (let fileIdx = 0; fileIdx < fileStates.length; fileIdx++) {
+                const fileBlocks = blocksFromFiles[fileIdx];
+                fileBlocks.forEach(b => {
+                    // Strip manual page breaks inside sections to let content flow naturally
+                    if (b.type !== 'pagebreak') {
+                        mergedMarkdownParts.push(b.markdown);
+                    }
+                });
+            }
+
+            // Empty line spacer between sections
+            mergedMarkdownParts.push('');
+        });
+
+        const unifiedMarkdown = mergedMarkdownParts.join('\n');
+
+        // 4. Overwrite pagesData with cover page and the merged content markdown
+        const firstFileLayout = (fileStates[0] && fileStates[0].pagesData && fileStates[0].pagesData[1]) ? (fileStates[0].pagesData[1].layout || 'single') : 'single';
+        const compiledPages = [
+            {
+                type: 'cover',
+                title: newMeta.title,
+                tagline: newMeta.tagline,
+                subtitle: newMeta.subtitle,
+                theme: (fileStates[0] && fileStates[0].pagesData && fileStates[0].pagesData[0] && fileStates[0].pagesData[0].theme) || 'maroon-gold'
+            },
+            {
+                type: 'content',
+                text: unifiedMarkdown,
+                layout: firstFileLayout
+            }
+        ];
+
+        // Update application state variables
+        pagesData = compiledPages;
+        uploadedImages = mergedImages;
+        activePageIndex = 0;
+
+        // Sync cover inputs in the UI
+        docTitleInput.value = newMeta.title;
+        docTaglineInput.value = newMeta.tagline;
+        docSubtitleInput.value = newMeta.subtitle;
+        docThemeInput.value = compiledPages[0].theme;
+
+        // Apply theme, clear content height cache, reflow preview and save
+        applyTheme(compiledPages[0].theme);
+        cachedMaxContentHeight = null; // Invalidate cache so it measures compiled height
+        renderPreview();
+        switchActivePage(0);
+        saveWorkspaceToLocalStorage();
+    }
+
     // Bind Social Settings inputs
     if (footerTelegramInput) {
         footerTelegramInput.addEventListener('input', () => {
             socialSettings.telegramText = footerTelegramInput.value;
+            cachedMaxContentHeight = null; // Clear height cache
             renderPreview();
             saveWorkspaceToLocalStorage();
         });
@@ -540,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (footerYoutubeInput) {
         footerYoutubeInput.addEventListener('input', () => {
             socialSettings.youtubeText = footerYoutubeInput.value;
+            cachedMaxContentHeight = null; // Clear height cache
             renderPreview();
             saveWorkspaceToLocalStorage();
         });
@@ -550,6 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const val = parseInt(footerSocialSizeInput.value) || 11;
             socialSettings.fontSize = val;
             if (footerSocialSizeVal) footerSocialSizeVal.textContent = `${val}px`;
+            cachedMaxContentHeight = null; // Clear height cache
             renderPreview();
             saveWorkspaceToLocalStorage();
         });
@@ -558,6 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (footerSocialPlacementSelect) {
         footerSocialPlacementSelect.addEventListener('change', () => {
             socialSettings.placement = footerSocialPlacementSelect.value;
+            cachedMaxContentHeight = null; // Clear height cache
             renderPreview();
             saveWorkspaceToLocalStorage();
         });
@@ -600,6 +851,59 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Page Template binding
+    if (pageTemplateSelect) {
+        pageTemplateSelect.addEventListener('change', () => {
+            if (activePageIndex === 0 || activePageIndex === pagesData.length) {
+                alert('Templates को आप केवल कंटेंट पेजों (Page 2, Page 3...) पर ही लागू कर सकते हैं!');
+                pageTemplateSelect.value = '';
+                return;
+            }
+            
+            const selectedTemplate = pageTemplateSelect.value;
+            if (!selectedTemplate) return;
+            
+            if (confirm("क्या आप इस पेज के वर्तमान लेख को चुने गए टेम्पलेट से बदलना चाहते हैं? (यह क्रिया पुरानी लिखावट मिटा देगी)")) {
+                let templateText = "";
+                switch(selectedTemplate) {
+                    case "standard":
+                        templateText = `# योजनाएँ एवं नीतियाँ\n\n## 🔶 प्रधानमंत्री फसल बीमा योजना\n• **प्रधानमंत्री फसल बीमा योजना** के तहत पॉलिसी जारी करने में राजस्थान देश में प्रथम स्थान पर।\n• प्रधानमंत्री फसल बीमा योजना के तहत राजस्थान में देश में सबसे ज्यादा **2 करोड़ 19 लाख पॉलिसी** जारी की गई।\n\n## 🔶 लाडो प्रोत्साहन योजना\n• **मुख्य उद्देश्य**:- बालिकाओं के प्रति सकारात्मक सोच विकसित करना और उनके स्वास्थ्य एवं शिक्षा के स्तर in सुधार लाना।\n• बालिका के जन्म पर **₹1.50 लाख** की राशि का संकल्प पत्र प्रदान किया जाता है।\n• माता का राजस्थान का मूल निवासी होना आवश्यक है।`;
+                        break;
+                    case "personality":
+                        templateText = `# चर्चित व्यक्तित्व\n\n<!-- personality|name=ऋषभ पारेख|title=संस्कृत व्याकरण विशेषज्ञ|desc=जयपुर के ऋषभ पारेख को गुजरात के शंखेश्वर जैन तीर्थ में 'सिद्धहेमव्याकरण रत्न' से सम्मानित किया गया है। उन्हें स्वर्ण मुद्रिका और 1 लाख रुपये का नकद पुरस्कार मिला।|avatar=👤 -->\n\n## 🔶 डॉ. राजानन्द शास्त्री\n• प्रसिद्ध ज्योतिषाचार्य और उनके अद्भुत शोध कार्य।\n• ज्योतिष के क्षेत्र में 'पितृ दोष निवारण अभियान' के उल्लेखनीय कार्यों के लिए इनका नाम **'WORLD BOOK OF RECORDS'** में दर्ज किया गया है।`;
+                        break;
+                    case "stats-table":
+                        templateText = `# तुलना व आँकड़े\n\n<!-- stats|num1=15.5 Lakh|lbl1=Total Beneficiaries|desc1=Active under Lado Protsahan|num2=₹200 Crore|lbl2=MoU Signed|desc2=For Agritech expansion in Jaipur -->\n\n## 🔶 ग्राम-2026 की इन्वेस्टर मीट\n• मुख्यमंत्री ने मीट के दौरान राजस्थान फाउंडेशन के अहमदाबाद चैप्टर का शुभारंभ किया।\n• इन्वेस्टर मीट में राजस्थान के कई स्थानों पर फूड पार्क, सीड प्रोसेसिंग, फूड प्रोसेसिंग के विकास के लिए **200 करोड़ रुपए** से अधिक के एमओयू का आदान प्रदान किया गया।`;
+                        break;
+                    case "facts-grid":
+                        templateText = `# त्वरित तथ्य ग्रिड\n\n<!-- facts-grid|t1=फसल बीमा|d1=राजस्थान फसल बीमा में पहले स्थान पर है।|t2=पोषण पखवाड़ा|d2=राजस्थान गतिविधियों में देश में प्रथम स्थान पर।|t3=परमाणु संयंत्र|d3=रावतभाटा 700 MW क्षमता की इकाइयां शुरू।|t4=विदेशी भाषा|d4=पांच भाषाएं सिखाने के लिए 41 कॉलेज में केंद्र। -->\n\n## 🔶 रावतभाटा परमाणु संयंत्र: ईंधन में आत्मनिर्भरता\n• एशिया के सबसे बड़े न्यूक्लियर फ्यूल कॉम्प्लेक्स (NFC) ने 140 यूरेनियम बंडल रावतभाटा बिजलीघर को सौंपे हैं।\n• अब रावतभाटा को ईंधन के लिए हैदराबाद पर निर्भर नहीं निर्भर रहना पड़ेगा।`;
+                        break;
+                    case "announcement":
+                        templateText = `# विशेष घोषणा\n\n<!-- announcement|title=विशेष सूचना / Alert|content=राजस्थान सरकार द्वारा युवाओं को पांच विदेशी भाषाएं (जर्मन, फ्रेंच, कोरियन, जापानी, स्पेनिश) सिखाई जाएंगी। इसके लिए 41 राजकीय कॉलेजों में सेंटर्स बनाए जाएंगे। नोडल विभाग उच्च एवं तकनीकी शिक्षा विभाग होगा। -->\n\n## 🔶 विदेशी भाषा संचार कौशल कार्यक्रम\n• **समझौता** :- राजस्थान सरकार का इंग्लिश एंड फॉरेन लैंग्वेज यूनिवर्सिटी, हैदराबाद और नेशनल स्किल डेवलपमेंट कॉरपोरेशन के साथ MoU।\n• ये कोर्स 16 सप्ताह के होंगे। सरकारी और प्राइवेट कॉलेज के साथ 12 वीं पास कोई भी विद्यार्थी प्रवेश ले सकेगा।`;
+                        break;
+                    case "blank":
+                        templateText = `# नया खाली पेज\n\n• यहाँ लिखना शुरू करें...`;
+                        break;
+                }
+                
+                pageContentInput.value = templateText;
+                pagesData[activePageIndex].text = templateText;
+                
+                // Reset select dropdown
+                pageTemplateSelect.value = "";
+                
+                // Clear content height cache & update
+                cachedMaxContentHeight = null;
+                renderPreview();
+                updateStats();
+                saveWorkspaceToLocalStorage();
+            } else {
+                pageTemplateSelect.value = "";
+            }
+        });
+    }
+
 
     if (applyLayoutAllBtn) {
         applyLayoutAllBtn.addEventListener('click', () => {
@@ -647,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         
         const a = document.createElement('a');
-        const docTitleClean = (pagesData[0] && pagesData[0].title) ? pagesData[0].title.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '_') : 'Loka_Nota';
+        const docTitleClean = (pagesData[0] && pagesData[0].title) ? pagesData[0].title.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '_') : 'Samyak';
         a.href = url;
         a.download = `${docTitleClean}_project.raaz`;
         document.body.appendChild(a);
@@ -672,18 +976,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         // Validate basic shape
                         if (!state.pagesData || !Array.isArray(state.pagesData) || state.pagesData.length === 0) {
-                            alert("Afsos! Ye valid Loka Nota project file (.raaz) nahi hai.");
+                            alert("Afsos! Ye valid Samyak project file (.raaz) nahi hai.");
                             return;
                         }
 
                         // Apply states
                         pagesData = state.pagesData;
-                        lastPageData = state.lastPageData || { title: 'THANK YOU', subtitle: 'लोकबंधु', tagline: 'कोचिंग नहीं क्रांति' };
+                        lastPageData = state.lastPageData || { title: 'THANK YOU', subtitle: 'सम्यक्', tagline: 'कोचिंग नहीं क्रांति' };
                         activePageIndex = state.activePageIndex || 0;
                         contentFontSize = state.contentFontSize || 13.5;
                         watermarkSettings = state.watermarkSettings || watermarkSettings;
                         customDesignSettings = state.customDesignSettings || customDesignSettings;
-                        socialSettings = state.socialSettings || { telegramText: '@lokbandhu', youtubeText: 'Lokbandhu Coaching' };
+                        socialSettings = state.socialSettings || { telegramText: '@samyak', youtubeText: 'Samyak Coaching' };
                         if (socialSettings.fontSize === undefined) socialSettings.fontSize = 11;
                         if (socialSettings.placement === undefined) socialSettings.placement = 'split';
                         uploadedImages = state.uploadedImages || {};
@@ -917,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateFontSize() {
+        cachedMaxContentHeight = null; // Clear height cache
         fontSizeValSpan.textContent = `${contentFontSize}px`;
         document.documentElement.style.setProperty('--content-font-size', `${contentFontSize}px`);
         renderPreview(); // Re-render preview to recalculate page height and overflows!
@@ -924,6 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Font style dynamic binding (Modern Sans, Traditional Serif, etc.)
     globalFontStyleSelect.addEventListener('change', () => {
+        cachedMaxContentHeight = null; // Clear height cache
         document.body.classList.remove('font-poppins-sans', 'font-traditional-serif', 'font-hybrid-style');
         
         const selectedStyle = globalFontStyleSelect.value;
@@ -938,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Font weight dynamic binding
     globalFontWeightSelect.addEventListener('change', () => {
+        cachedMaxContentHeight = null; // Clear height cache
         document.documentElement.style.setProperty('--content-font-weight', globalFontWeightSelect.value);
         renderPreview();
         saveWorkspaceToLocalStorage();
@@ -945,6 +1252,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Line spacing dynamic binding
     globalLineSpacingSelect.addEventListener('change', () => {
+        cachedMaxContentHeight = null; // Clear height cache
         document.documentElement.style.setProperty('--content-line-height', globalLineSpacingSelect.value);
         renderPreview();
         saveWorkspaceToLocalStorage();
@@ -952,6 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Letter spacing dynamic binding
     globalLetterSpacingSelect.addEventListener('change', () => {
+        cachedMaxContentHeight = null; // Clear height cache
         document.documentElement.style.setProperty('--content-letter-spacing', globalLetterSpacingSelect.value);
         renderPreview();
         saveWorkspaceToLocalStorage();
@@ -1089,6 +1398,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.style.setProperty('--custom-section-size', `${e.target.value}px`);
         saveWorkspaceToLocalStorage();
     });
+    designSectionAlign.addEventListener('change', (e) => {
+        customDesignSettings.sectionAlignment = e.target.value;
+        applyCustomDesignSettingsToDOM();
+        saveWorkspaceToLocalStorage();
+    });
 
     // Group 2: Topic Heading
     designTopicText.addEventListener('input', (e) => {
@@ -1160,22 +1474,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Group 4: Pagination (Requires live re-render for layout prefix/positioning changes)
     designPageNumColor.addEventListener('input', (e) => {
         customDesignSettings.pageNumColor = e.target.value;
+        cachedMaxContentHeight = null; // Clear height cache
         renderPreview();
         saveWorkspaceToLocalStorage();
     });
     designPageNumPlace.addEventListener('change', (e) => {
         customDesignSettings.pageNumPlacement = e.target.value;
+        cachedMaxContentHeight = null; // Clear height cache
         renderPreview();
         saveWorkspaceToLocalStorage();
     });
     designPageNumPrefix.addEventListener('input', (e) => {
         customDesignSettings.pageNumPrefix = e.target.value;
+        cachedMaxContentHeight = null; // Clear height cache
         renderPreview();
         saveWorkspaceToLocalStorage();
     });
     designPageNumSize.addEventListener('input', (e) => {
         designPageNumSizeVal.textContent = `${e.target.value}px`;
         customDesignSettings.pageNumSize = e.target.value;
+        cachedMaxContentHeight = null; // Clear height cache
         renderPreview();
         saveWorkspaceToLocalStorage();
     });
@@ -1188,6 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 customDesignSettings.headerLogoSrc = event.target.result;
                 headerLogoPreview.src = event.target.result;
                 headerLogoPreviewGroup.style.display = 'block';
+                cachedMaxContentHeight = null; // Clear height cache
                 renderPreview();
                 saveWorkspaceToLocalStorage();
             };
@@ -1200,6 +1519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headerLogoFileInput.value = '';
         headerLogoPreview.src = '';
         headerLogoPreviewGroup.style.display = 'none';
+        cachedMaxContentHeight = null; // Clear height cache
         renderPreview();
         saveWorkspaceToLocalStorage();
     });
@@ -1416,8 +1736,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function preProcessText(text) {
         if (!text) return '';
         
+        // Normalize newlines by removing carriage returns, and strip invisible characters/BOMs
+        let formatted = text.replace(/\r/g, '').replace(/[\u200B\uFEFF\u200C\u200D\u200E\u200F]/g, '');
+        
         // 1. Insert newlines before any diamond emojis unless preceded by '#' (markdown headings)
-        let formatted = text.replace(/([^\n#\s])\s*(🔶|🔷|🔸|🔹|♦️|💎)/g, '$1\n$2');
+        formatted = formatted.replace(/([^\n#\s])\s*(🔶|🔷|🔸|🔹|♦️|💎)/g, '$1\n$2');
         
         // 2. Insert newlines before bullet points if not already preceded by one
         formatted = formatted.replace(/([^\n])\s*(•|●|■|▪|▫|[\u2022\u25CF\u25AA\u25AB])/g, '$1\n$2');
@@ -1429,10 +1752,9 @@ document.addEventListener('DOMContentLoaded', () => {
             "महोत्सव/मेले/कार्यक्रम", "महोत्सव, मेले व कार्यक्रम", "महोत्सव, मेले और कार्यक्रम",
             "आर्थिक विकास व समझौते", "आर्थिक विकास", "आर्थिक विकास और समझौते"
         ];
-        
         autoSplitSections.forEach(sec => {
             const escapedSec = sec.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-            const regex = new RegExp(`([^\\n])\\s*(${escapedSec})`, 'g');
+            const regex = new RegExp(`([^\\n#\\s])\\s*(${escapedSec})`, 'g');
             formatted = formatted.replace(regex, '$1\n$2');
         });
 
@@ -1490,6 +1812,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 blocks.push({
                     type: 'spacer',
                     count: count,
+                    markdown: trimmed
+                });
+                continue;
+            }
+
+            // Custom Parsed Template Comment Blocks
+            if (trimmed.startsWith('<!-- personality|') && trimmed.endsWith('-->')) {
+                blocks.push({
+                    type: 'personality',
+                    markdown: trimmed
+                });
+                continue;
+            }
+            if (trimmed.startsWith('<!-- stats|') && trimmed.endsWith('-->')) {
+                blocks.push({
+                    type: 'stats',
+                    markdown: trimmed
+                });
+                continue;
+            }
+            if (trimmed.startsWith('<!-- facts-grid|') && trimmed.endsWith('-->')) {
+                blocks.push({
+                    type: 'facts-grid',
+                    markdown: trimmed
+                });
+                continue;
+            }
+            if (trimmed.startsWith('<!-- announcement|') && trimmed.endsWith('-->')) {
+                blocks.push({
+                    type: 'announcement',
                     markdown: trimmed
                 });
                 continue;
@@ -1613,9 +1965,132 @@ document.addEventListener('DOMContentLoaded', () => {
         return blocks;
     }
 
+    function parseCommentAttributes(str) {
+        const attrs = {};
+        const content = str.replace('<!--', '').replace('-->', '').trim();
+        const pipeIdx = content.indexOf('|');
+        if (pipeIdx === -1) return attrs;
+        
+        const partsStr = content.substring(pipeIdx + 1);
+        const parts = partsStr.split('|');
+        parts.forEach(part => {
+            const eqIdx = part.indexOf('=');
+            if (eqIdx !== -1) {
+                const key = part.substring(0, eqIdx).trim();
+                const val = part.substring(eqIdx + 1).trim();
+                attrs[key] = val;
+            }
+        });
+        return attrs;
+    }
+
     function renderBlockToNode(block) {
         const line = block.markdown.trim();
         
+        if (block.type === 'personality') {
+            const attrs = parseCommentAttributes(line);
+            const card = document.createElement('div');
+            card.className = 'personality-feature-card';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'personality-avatar-wrapper';
+            avatar.textContent = attrs.avatar || '👤';
+            
+            const info = document.createElement('div');
+            info.className = 'personality-info';
+            
+            const name = document.createElement('div');
+            name.className = 'personality-name';
+            name.textContent = attrs.name || 'ऋषभ पारेख';
+            
+            const title = document.createElement('div');
+            title.className = 'personality-title';
+            title.textContent = attrs.title || 'संस्कृत व्याकरण विशेषज्ञ';
+            
+            const desc = document.createElement('div');
+            desc.className = 'personality-description';
+            desc.textContent = attrs.desc || 'विवरण उपलब्ध नहीं है।';
+            
+            info.appendChild(name);
+            info.appendChild(title);
+            info.appendChild(desc);
+            card.appendChild(avatar);
+            card.appendChild(info);
+            return card;
+        }
+        if (block.type === 'stats') {
+            const attrs = parseCommentAttributes(line);
+            const grid = document.createElement('div');
+            grid.className = 'stats-callout-grid';
+            
+            if (attrs.num1 || attrs.lbl1) {
+                const c1 = document.createElement('div');
+                c1.className = 'stat-card';
+                c1.innerHTML = `
+                    <div class="stat-number">${attrs.num1 || '0'}</div>
+                    <div class="stat-label">${attrs.lbl1 || 'Label'}</div>
+                    <div class="stat-desc">${attrs.desc1 || ''}</div>
+                `;
+                grid.appendChild(c1);
+            }
+            if (attrs.num2 || attrs.lbl2) {
+                const c2 = document.createElement('div');
+                c2.className = 'stat-card';
+                c2.innerHTML = `
+                    <div class="stat-number">${attrs.num2 || '0'}</div>
+                    <div class="stat-label">${attrs.lbl2 || 'Label'}</div>
+                    <div class="stat-desc">${attrs.desc2 || ''}</div>
+                `;
+                grid.appendChild(c2);
+            }
+            if (attrs.num3 || attrs.lbl3) {
+                const c3 = document.createElement('div');
+                c3.className = 'stat-card';
+                c3.innerHTML = `
+                    <div class="stat-number">${attrs.num3 || '0'}</div>
+                    <div class="stat-label">${attrs.lbl3 || 'Label'}</div>
+                    <div class="stat-desc">${attrs.desc3 || ''}</div>
+                `;
+                grid.appendChild(c3);
+            }
+            return grid;
+        }
+        if (block.type === 'facts-grid') {
+            const attrs = parseCommentAttributes(line);
+            const grid = document.createElement('div');
+            grid.className = 'quick-facts-grid';
+            
+            for (let k = 1; k <= 4; k++) {
+                if (attrs[`t${k}`] || attrs[`d${k}`]) {
+                    const card = document.createElement('div');
+                    card.className = 'fact-card';
+                    card.innerHTML = `
+                        <div class="fact-title">📌 ${attrs[`t${k}`] || 'Fact Title'}</div>
+                        <div class="fact-desc">${attrs[`d${k}`] || 'Fact detail description goes here.'}</div>
+                    `;
+                    grid.appendChild(card);
+                }
+            }
+            return grid;
+        }
+        if (block.type === 'announcement') {
+            const attrs = parseCommentAttributes(line);
+            const box = document.createElement('div');
+            box.className = 'announcement-alert-box';
+            
+            const title = document.createElement('div');
+            title.className = 'announcement-title';
+            title.innerHTML = `📢 <span>${attrs.title || 'विशेष सूचना'}</span>`;
+            
+            const content = document.createElement('div');
+            content.className = 'announcement-content';
+            content.textContent = attrs.content || 'महत्वपूर्ण सूचना यहाँ प्रदर्शित होगी।';
+            
+            box.appendChild(title);
+            box.appendChild(content);
+            return box;
+        }
+
         // 1. SECTION BAR RENDER
         if (block.type === 'section') {
             const sectionTitle = line.replace(/^#+\s*/, '').replace(/^[?？\s]+/, '').trim();
@@ -1813,6 +2288,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return div;
         }
         
+        // 4.96 THANK YOU BOX RENDER
+        else if (block.type === 'thankyou') {
+            const thankyouBox = document.createElement('div');
+            thankyouBox.className = 'thankyou-box';
+            
+            const h1 = document.createElement('h1');
+            h1.textContent = lastPageData.title;
+            
+            const h2 = document.createElement('h2');
+            h2.textContent = lastPageData.subtitle;
+            
+            const p = document.createElement('p');
+            p.textContent = lastPageData.tagline;
+            
+            thankyouBox.appendChild(h1);
+            thankyouBox.appendChild(h2);
+            thankyouBox.appendChild(p);
+            return thankyouBox;
+        }
+        
         // 5. REGULAR BODY PARAGRAPH RENDER
         else {
             const p = document.createElement('p');
@@ -1870,6 +2365,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const spaceMatch = markdown.trim().match(/^\[?(space|spce)(?:\s+(\d+))?\]?$/i);
             const count = Math.min(50, (spaceMatch && spaceMatch[2]) ? parseInt(spaceMatch[2], 10) : 1);
             node.style.height = `calc(var(--content-font-size) * var(--content-line-height, 1.45) * ${count})`;
+        } else if (type === 'thankyou') {
+            if (node.querySelector('h1')) node.querySelector('h1').textContent = lastPageData.title;
+            if (node.querySelector('h2')) node.querySelector('h2').textContent = lastPageData.subtitle;
+            if (node.querySelector('p')) node.querySelector('p').textContent = lastPageData.tagline;
         } else {
             let formattedText = formatMarkdownText(line);
             node.innerHTML = formattedText;
@@ -1944,6 +2443,54 @@ document.addEventListener('DOMContentLoaded', () => {
         pageNumText.style.color = customDesignSettings.pageNumColor || '#000000';
     }
 
+    // Helper to estimate height of a parsed block of content to reduce layout thrashing
+    function estimateBlockHeight(block, fontSize, lineSpacing, isTwoCol = false) {
+        const lineHeight = fontSize * lineSpacing;
+        const text = block.markdown || '';
+        const trimmed = text.trim();
+        if (!trimmed) return lineHeight;
+
+        switch (block.type) {
+            case 'section':
+                return 55; // 18px font size + padding/margin
+            case 'topic':
+                return 45; // 15px font size + padding/margin
+            case 'empty':
+                return lineHeight;
+            case 'spacer':
+                {
+                    const spaceMatch = trimmed.match(/^\[?(space|spce)(?:\s+(\d+))?\]?$/i);
+                    const count = Math.min(50, (spaceMatch && spaceMatch[2]) ? parseInt(spaceMatch[2], 10) : 1);
+                    return lineHeight * count;
+                }
+            case 'thankyou':
+                return 160;
+            case 'image':
+                return 220; // conservative estimate for image height
+            case 'table':
+                {
+                    const rows = text.split('\n').filter(l => l.trim()).length;
+                    return (rows * 32) + 20; // 32px per row + padding/margin
+                }
+            case 'box':
+                {
+                    const baseWidth = isTwoCol ? 270 : 600;
+                    const charsPerLine = Math.max(20, Math.floor(baseWidth / (0.6 * fontSize)));
+                    const lines = Math.ceil(trimmed.length / charsPerLine) || 1;
+                    return (lines * lineHeight) + 30; // box has border/padding
+                }
+            case 'bullet':
+            case 'paragraph':
+            default:
+                {
+                    const baseWidth = isTwoCol ? 290 : 640;
+                    const charsPerLine = Math.max(20, Math.floor(baseWidth / (0.55 * fontSize)));
+                    const lines = Math.ceil(trimmed.length / charsPerLine) || 1;
+                    return (lines * lineHeight) + 8; // small margin/gap
+                }
+        }
+    }
+
     // Render right-side actual A4 pages sequentially
     function renderPreview() {
         // Cancel any pending debounced render since we are executing a render now
@@ -1951,23 +2498,26 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(renderTimeout);
         }
         // Measure dynamic available height of page content container
-        const tempPageStruct = createContentPageDOM(999, 999);
-        tempPageStruct.pageElement.style.position = 'absolute';
-        tempPageStruct.pageElement.style.visibility = 'hidden';
-        tempPageStruct.pageElement.style.top = '-9999px';
-        document.body.appendChild(tempPageStruct.pageElement);
-        const measuredHeight = tempPageStruct.contentElement.clientHeight;
-        document.body.removeChild(tempPageStruct.pageElement);
-        if (measuredHeight > 0) {
-            MAX_CONTENT_HEIGHT = measuredHeight;
+        if (cachedMaxContentHeight === null) {
+            const tempPageStruct = createContentPageDOM(999, 999);
+            tempPageStruct.pageElement.style.position = 'absolute';
+            tempPageStruct.pageElement.style.visibility = 'hidden';
+            tempPageStruct.pageElement.style.top = '-9999px';
+            document.body.appendChild(tempPageStruct.pageElement);
+            const measuredHeight = tempPageStruct.contentElement.clientHeight;
+            document.body.removeChild(tempPageStruct.pageElement);
+            if (measuredHeight > 0) {
+                cachedMaxContentHeight = measuredHeight;
+            }
         }
+        MAX_CONTENT_HEIGHT = cachedMaxContentHeight || 910;
 
         // Clear canvas
         pagesContainer.innerHTML = '';
 
         // 1. Render Cover Page (Page 1)
         const coverPageElement = createCoverPageDOM();
-        injectWatermark(coverPageElement); // Inject Watermark Behind Content
+        // Prevent watermark on cover page as per user request
         pagesContainer.appendChild(coverPageElement);
 
         // 1.5 Track cursor position in content pages
@@ -1995,9 +2545,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Distribute blocks across Content Pages dynamically
         const fullContentMarkdown = pagesData.slice(1).map(p => p.text).join('\n');
         const blocks = parseTextToBlocks(fullContentMarkdown);
+        
+        // Append special inline thank you box block at the end
+        blocks.push({
+            type: 'thankyou',
+            markdown: '[thankyou]',
+            id: 'thankyou'
+        });
+
         // Assign original unique IDs to blocks for drag-and-drop tracking
         blocks.forEach((block, idx) => {
-            block.id = idx;
+            if (block.type !== 'thankyou') {
+                block.id = idx;
+            }
         });
 
         let currentVisualPageNum = 1;
@@ -2010,10 +2570,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentPageMarkdownLines = [];
         let sectionInfoList = [];
 
+        // Track estimated height of content on the current page to reduce DOM layout reads
+        let currentPageHeight = 0;
+        const checkThreshold = MAX_CONTENT_HEIGHT - 120;
+
         for (let i = 0; i < blocks.length; i++) {
             const block = blocks[i];
-
             if (block.type === 'pagebreak') {
+                currentPageMarkdownLines.push(block.markdown);
                 pageContentMarkdownArray.push(currentPageMarkdownLines.join('\n'));
                 currentPageMarkdownLines = [];
                 
@@ -2022,6 +2586,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 injectWatermark(currentPageStruct.pageElement);
                 pagesContainer.appendChild(currentPageStruct.pageElement);
                 activeBulletListElement = null;
+                currentPageHeight = 0; // Reset height estimate for new page
                 continue;
             }
 
@@ -2050,14 +2615,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Check if page overflows
+            // Check if page layout is two column
             const isTwoCol = currentPageStruct.contentElement.classList.contains('layout-two-column');
+
+            // Estimate the height of the current block
+            const estHeight = estimateBlockHeight(block, contentFontSize, parseFloat(globalLineSpacingSelect.value || 1.45), isTwoCol);
+            currentPageHeight += estHeight;
+
+            // Check if page overflows
             let isOverflow = false;
             if (isTwoCol) {
-                isOverflow = currentPageStruct.contentElement.scrollWidth > (currentPageStruct.contentElement.clientWidth + 2);
-            } else {
-                isOverflow = currentPageStruct.contentElement.scrollHeight > MAX_CONTENT_HEIGHT;
+                // In two column layouts, check scrollWidth if the estimated content height is close to the double-column limit
+                // Using MAX_CONTENT_HEIGHT * 2.0 - 180 as threshold to prevent layout thrashing and only check near limits
+                if (currentPageHeight > (MAX_CONTENT_HEIGHT * 2.0 - 180)) {
+                    isOverflow = currentPageStruct.contentElement.scrollWidth > (currentPageStruct.contentElement.clientWidth + 2);
+                }
+            } else if (currentPageHeight > checkThreshold) {
+                // Only read scrollHeight when estimated height gets close to or exceeds limit
+                const actualHeight = currentPageStruct.contentElement.scrollHeight;
+                currentPageHeight = actualHeight; // Sync running estimate with actual measurement
+                isOverflow = actualHeight > MAX_CONTENT_HEIGHT;
             }
+
             if (isOverflow) {
                 // We have an overflow. Let's see if we can split this block.
                 let canSplit = (block.type === 'paragraph' || block.type === 'bullet' || block.type === 'box' || block.type === 'table');
@@ -2163,6 +2742,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             injectWatermark(currentPageStruct.pageElement);
                             pagesContainer.appendChild(currentPageStruct.pageElement);
                             activeBulletListElement = null;
+                            currentPageHeight = 0; // Reset height estimate for new page
 
                             // Insert remaining block into blocks array to be processed next
                             blocks.splice(i + 1, 0, {
@@ -2178,7 +2758,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!splitSuccess) {
                     // Restore the node's original full content since the split failed or was too small
-                    updateNodeContent(node, block.type, block.markdown);
+                    if (canSplit) {
+                        updateNodeContent(node, block.type, block.markdown);
+                    }
 
                     // Fall back to moving the entire block to the next page.
                     let isOnlyItem = false;
@@ -2222,6 +2804,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             currentPageStruct.contentElement.appendChild(node);
                         }
 
+                        // Sync estimate height for new page and add the moved block's height estimate
+                        currentPageHeight = estHeight;
+
                         // If section, correct its start page
                         if (block.type === 'section') {
                             const lastSec = sectionInfoList[sectionInfoList.length - 1];
@@ -2231,8 +2816,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Only push to currentPageMarkdownLines if we didn't already push and clear it in splitSuccess
-            if (currentPageStruct.contentElement.contains(node) || (activeBulletListElement && activeBulletListElement.contains(node))) {
+            // Only push to currentPageMarkdownLines if we didn't already push and clear it in splitSuccess, and not for thankyou block
+            if (block.type !== 'thankyou' && (currentPageStruct.contentElement.contains(node) || (activeBulletListElement && activeBulletListElement.contains(node)))) {
                 currentPageMarkdownLines.push(block.markdown);
             }
         }
@@ -2254,7 +2839,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pagesData = [coverPage, ...newContentPages];
 
         // Recalculate activePageIndex and relative cursor position in the new pagesData!
-        if (pagesData.length > 1) {
+        // Only recalculate activePageIndex if currently editing a content page (not Cover or End Page)
+        if (activePageIndex > 0 && activePageIndex < pagesData.length && pagesData.length > 1) {
             let accumulatedLength = 0;
             let found = false;
             for (let idx = 1; idx < pagesData.length; idx++) {
@@ -2275,17 +2861,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. Render final Thank You page
-        const endPageNum = currentVisualPageNum + 2; // Physical page number
-        const finalPageElement = createThankYouPageDOM(endPageNum);
-        injectWatermark(finalPageElement); // Inject Watermark Behind Content
-        pagesContainer.appendChild(finalPageElement);
+        // 3. Render final Thank You page (Removed: now rendered inline in last content page)
 
         // 4. Generate dynamic Table of Contents inside Cover Page
         populateCoverPageTOC(sectionInfoList);
 
         // 5. Restore spotlight outline around active edited page
-        const activeA4Page = document.querySelector(`.a4-page[data-page="${activePageIndex + 1}"]`);
+        let pageSelectorIndex = activePageIndex + 1;
+        if (activePageIndex === pagesData.length) {
+            pageSelectorIndex = pagesData.length; // Spotlight the last content page where the inline thank you box is
+        }
+        const activeA4Page = document.querySelector(`.a4-page[data-page="${pageSelectorIndex}"]`);
         if (activeA4Page) {
             document.querySelectorAll('.a4-page').forEach(page => {
                 page.classList.remove('active-page-spotlight');
@@ -2527,12 +3113,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return page;
     }
 
-    // Dynamic cover page TOC renderer
+    // Dynamic cover page TOC renderer with drag-and-drop section reordering support
     function populateCoverPageTOC(sections) {
         const tocPlaceholder = document.getElementById('toc-placeholder');
         if (!tocPlaceholder) return;
 
         tocPlaceholder.innerHTML = '';
+
+        // Add class to cover content if there are many sections to make layout compact
+        const coverContent = document.querySelector('.cover-page-content');
+        if (coverContent) {
+            if (sections.length > 8) {
+                coverContent.classList.add('has-many-sections');
+            } else {
+                coverContent.classList.remove('has-many-sections');
+            }
+        }
 
         const tocTitle = document.createElement('div');
         tocTitle.className = 'toc-title';
@@ -2550,6 +3146,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tocRows = document.createElement('div');
         tocRows.className = 'toc-rows';
+        if (sections.length > 8) {
+            tocRows.classList.add('two-columns');
+        }
 
         for (let i = 0; i < sections.length; i++) {
             const currentSection = sections[i];
@@ -2576,6 +3175,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const row = document.createElement('div');
             row.className = 'toc-row';
+            row.setAttribute('draggable', 'true');
+            row.setAttribute('data-section-name', currentSection.name);
             row.innerHTML = `
                 <div class="toc-row-left">
                     <span>${icon}</span>
@@ -2583,10 +3184,141 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="toc-row-page">${pageRangeString}</div>
             `;
+
+            // Bind Drag and Drop event listeners on the TOC row
+            row.addEventListener('dragstart', (e) => {
+                draggedTOCSectionName = currentSection.name;
+                row.classList.add('dragging-toc-row');
+                e.dataTransfer.setData('text/plain', currentSection.name);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            row.addEventListener('dragend', () => {
+                row.classList.remove('dragging-toc-row');
+                document.querySelectorAll('.toc-row').forEach(r => {
+                    r.classList.remove('drag-hover-before', 'drag-hover-after');
+                });
+                draggedTOCSectionName = null;
+            });
+
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!draggedTOCSectionName || draggedTOCSectionName === currentSection.name) return;
+
+                const rect = row.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                e.dataTransfer.dropEffect = 'move';
+
+                if (e.clientY < midpoint) {
+                    row.classList.add('drag-hover-before');
+                    row.classList.remove('drag-hover-after');
+                } else {
+                    row.classList.add('drag-hover-after');
+                    row.classList.remove('drag-hover-before');
+                }
+            });
+
+            row.addEventListener('dragleave', () => {
+                row.classList.remove('drag-hover-before', 'drag-hover-after');
+            });
+
+            row.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (!draggedTOCSectionName || draggedTOCSectionName === currentSection.name) return;
+
+                const isBefore = row.classList.contains('drag-hover-before');
+                row.classList.remove('drag-hover-before', 'drag-hover-after');
+
+                reorderDocumentSectionsByTOC(draggedTOCSectionName, currentSection.name, isBefore);
+            });
+
             tocRows.appendChild(row);
         }
 
         tocPlaceholder.appendChild(tocRows);
+    }
+
+    // Helper to merge and reorder entire sections by dragging them in the cover page TOC
+    function reorderDocumentSectionsByTOC(draggedName, targetName, isBefore) {
+        saveCurrentInputState(); // Capture latest text state of all inputs
+
+        function normalizeSecName(name) {
+            if (!name) return '';
+            return name.replace(/^#+\s*/, '')
+                       .replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '')
+                       .trim()
+                       .toLowerCase();
+        }
+
+        const draggedNorm = normalizeSecName(draggedName);
+        const targetNorm = normalizeSecName(targetName);
+        if (draggedNorm === targetNorm) return;
+
+        // 1. Get unified content markdown
+        const fullContent = pagesData.slice(1).map(p => p.text).join('\n');
+        const blocks = parseTextToBlocks(fullContent);
+
+        // 2. Segment blocks into section arrays
+        let sections = [];
+        let currentSec = { nameNorm: '__intro__', nameOrig: '', blocks: [] };
+        sections.push(currentSec);
+
+        blocks.forEach(block => {
+            if (block.type === 'section') {
+                const origName = block.markdown.trim();
+                const normName = normalizeSecName(origName);
+                currentSec = { nameNorm: normName, nameOrig: origName, blocks: [] };
+                sections.push(currentSec);
+            } else {
+                currentSec.blocks.push(block);
+            }
+        });
+
+        // 3. Find target and source index, then splice and insert
+        const draggedIndex = sections.findIndex(s => s.nameNorm === draggedNorm);
+        const targetIndex = sections.findIndex(s => s.nameNorm === targetNorm);
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [draggedSec] = sections.splice(draggedIndex, 1);
+        const newTargetIndex = sections.findIndex(s => s.nameNorm === targetNorm);
+        const insertIndex = isBefore ? newTargetIndex : newTargetIndex + 1;
+        sections.splice(insertIndex, 0, draggedSec);
+
+        // 4. Stitch back to unified markdown
+        let mergedMarkdownParts = [];
+        sections.forEach(sec => {
+            if (sec.nameNorm !== '__intro__' && sec.nameOrig) {
+                mergedMarkdownParts.push(sec.nameOrig);
+            }
+            sec.blocks.forEach(b => {
+                mergedMarkdownParts.push(b.markdown);
+            });
+            // Spacer between sections
+            if (sec.blocks.length > 0 || (sec.nameNorm !== '__intro__' && sec.nameOrig)) {
+                mergedMarkdownParts.push('');
+            }
+        });
+
+        const unifiedMarkdown = mergedMarkdownParts.join('\n');
+
+        // 5. Update content pages (keeping layout configs intact)
+        const cover = pagesData[0];
+        const layouts = pagesData.slice(1).map(p => p.layout || 'single');
+        if (layouts.length === 0) layouts.push('single');
+        const newPages = layouts.map((lay, idx) => ({
+            type: 'content',
+            text: (idx === 0) ? unifiedMarkdown : '',
+            layout: lay
+        }));
+        pagesData = [cover, ...newPages];
+
+        // 6. Invalidate height cache, re-render preview, and save
+        cachedMaxContentHeight = null;
+        renderPreview();
+        saveWorkspaceToLocalStorage();
+        
+        // Auto-switch back to cover page (index 0) so the user sees the reordered TOC
+        switchActivePage(0);
     }
 
     // 6. GENERAL UTILITIES
@@ -2663,18 +3395,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         try {
-            localStorage.setItem('loka_nota_workspace_state', JSON.stringify(state));
+            localStorage.setItem('samyak_workspace_state', JSON.stringify(state));
         } catch (e) {
             console.error("Error saving to localStorage (possibly quota exceeded due to large images):", e);
         }
     }
 
     function applyCustomDesignSettingsToDOM() {
+        cachedMaxContentHeight = null; // Clear height cache
         // Direct CSS properties update
         document.documentElement.style.setProperty('--custom-section-bg', customDesignSettings.sectionBg || 'var(--primary-color)');
         document.documentElement.style.setProperty('--custom-section-border-left', customDesignSettings.sectionAccent || 'var(--accent-color)');
         document.documentElement.style.setProperty('--custom-section-text', customDesignSettings.sectionText || '#ffffff');
         document.documentElement.style.setProperty('--custom-section-size', `${customDesignSettings.sectionSize || 18}px`);
+
+        const secAlign = customDesignSettings.sectionAlignment || 'left';
+        document.documentElement.style.setProperty('--custom-section-align', secAlign);
+        if (secAlign === 'center') {
+            document.documentElement.style.setProperty('--custom-section-display', 'block');
+            document.documentElement.style.setProperty('--custom-section-width', '100%');
+            document.documentElement.style.setProperty('--custom-section-align-self', 'stretch');
+            document.documentElement.style.setProperty('--custom-section-border-right', `6px solid ${customDesignSettings.sectionAccent || 'var(--accent-color)'}`);
+            document.documentElement.style.setProperty('--custom-section-border-radius', '4px');
+        } else {
+            document.documentElement.style.setProperty('--custom-section-display', 'inline-block');
+            document.documentElement.style.setProperty('--custom-section-width', 'max-content');
+            document.documentElement.style.setProperty('--custom-section-align-self', 'flex-start');
+            document.documentElement.style.setProperty('--custom-section-border-right', 'none');
+            document.documentElement.style.setProperty('--custom-section-border-radius', '0 4px 4px 0');
+        }
 
         document.documentElement.style.setProperty('--custom-topic-text', customDesignSettings.topicText || 'var(--accent-color)');
         document.documentElement.style.setProperty('--custom-topic-border-color', customDesignSettings.topicBorder || 'var(--secondary-color)');
@@ -2697,6 +3446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         designSectionText.value = customDesignSettings.sectionText || '#ffffff';
         designSectionSize.value = customDesignSettings.sectionSize || '18';
         designSectionSizeVal.textContent = `${customDesignSettings.sectionSize || 18}px`;
+        designSectionAlign.value = secAlign;
 
         designTopicText.value = customDesignSettings.topicText || '#1d6ea5';
         designTopicBorder.value = customDesignSettings.topicBorder || '#c5a353';
@@ -2731,19 +3481,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadWorkspaceFromLocalStorage() {
-        const saved = localStorage.getItem('loka_nota_workspace_state');
+        const saved = localStorage.getItem('samyak_workspace_state');
         if (!saved) return false;
         
         try {
             const state = JSON.parse(saved);
             
             pagesData = state.pagesData || [];
-            lastPageData = state.lastPageData || { title: 'THANK YOU', subtitle: 'लोकबंधु', tagline: 'कोचिंग नहीं क्रांति' };
+            lastPageData = state.lastPageData || { title: 'THANK YOU', subtitle: 'सम्यक्', tagline: 'कोचिंग नहीं क्रांति' };
             activePageIndex = state.activePageIndex || 0;
             contentFontSize = state.contentFontSize || 13.5;
             watermarkSettings = state.watermarkSettings || watermarkSettings;
             customDesignSettings = state.customDesignSettings || customDesignSettings;
-            socialSettings = state.socialSettings || { telegramText: '@lokbandhu', youtubeText: 'Lokbandhu Coaching' };
+            if (customDesignSettings.sectionAlignment === undefined) {
+                customDesignSettings.sectionAlignment = 'left';
+            }
+            socialSettings = state.socialSettings || { telegramText: '@samyak', youtubeText: 'Samyak Coaching' };
             if (socialSettings.fontSize === undefined) socialSettings.fontSize = 11;
             if (socialSettings.placement === undefined) socialSettings.placement = 'split';
             uploadedImages = state.uploadedImages || {};
@@ -2812,7 +3565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Keep the cover page metadata as is
         const currentCover = pagesData[0] || {
             type: 'cover',
-            title: 'लोकबंधु',
+            title: 'सम्यक्',
             tagline: 'कोचिंग नहीं क्रांति',
             subtitle: 'राजस्थान समसामयिकी',
             theme: 'maroon-gold'
@@ -2857,7 +3610,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cover Page Meta (Idx 0)
             {
                 type: 'cover',
-                title: 'लोकबंधु',
+                title: 'सम्यक्',
                 tagline: 'कोचिंग नहीं क्रांति',
                 subtitle: 'राजस्थान समसामयिकी : 1-10 मई',
                 theme: 'maroon-gold'
@@ -3017,7 +3770,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lastPageData = {
             title: 'THANK YOU',
-            subtitle: 'लोकबंधु',
+            subtitle: 'सम्यक्',
             tagline: 'कोचिंग नहीं क्रांति'
         };
 
@@ -3042,8 +3795,8 @@ document.addEventListener('DOMContentLoaded', () => {
         watermarkTypeSelect.value = 'none';
         watermarkSettings.type = 'none';
         watermarkSettings.imageSrc = '';
-        watermarkSettings.text = 'लोकबंधु';
-        watermarkTextInput.value = 'लोकबंधु';
+        watermarkSettings.text = 'सम्यक्';
+        watermarkTextInput.value = 'सम्यक्';
         watermarkPositionSelect.value = 'center';
         watermarkSettings.position = 'center';
         watermarkRotationSelect.value = '-45';
@@ -3063,7 +3816,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset End Page Settings
         lastTitleInput.value = 'THANK YOU';
-        lastSubtitleInput.value = 'लोकबंधु';
+        lastSubtitleInput.value = 'सम्यक्';
         lastTaglineInput.value = 'कोचिंग नहीं क्रांति';
 
         // Reset Custom Design Settings in UI and State
@@ -3072,6 +3825,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.style.setProperty('--custom-section-size', '18px');
         document.documentElement.style.setProperty('--custom-section-text', '#ffffff');
         designSectionText.value = '#ffffff';
+        customDesignSettings.sectionAlignment = 'left';
+        if (designSectionAlign) {
+            designSectionAlign.value = 'left';
+        }
 
         designTopicSize.value = '15';
         designTopicSizeVal.textContent = '15px';
@@ -3112,13 +3869,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset social settings
         socialSettings = {
-            telegramText: '@lokbandhu',
-            youtubeText: 'Lokbandhu Coaching',
+            telegramText: '@samyak',
+            youtubeText: 'Samyak Coaching',
             fontSize: 11,
             placement: 'split'
         };
-        if (footerTelegramInput) footerTelegramInput.value = '@lokbandhu';
-        if (footerYoutubeInput) footerYoutubeInput.value = 'Lokbandhu Coaching';
+        if (footerTelegramInput) footerTelegramInput.value = '@samyak';
+        if (footerYoutubeInput) footerYoutubeInput.value = 'Samyak Coaching';
         if (footerSocialSizeInput) footerSocialSizeInput.value = 11;
         if (footerSocialSizeVal) footerSocialSizeVal.textContent = '11px';
         if (footerSocialPlacementSelect) footerSocialPlacementSelect.value = 'split';
@@ -3205,8 +3962,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. End Page Redirect
-        if (pageEl.classList.contains('end-page')) {
+        // 2. End Page Redirect (when clicking the inline Thank You box)
+        if (e.target.closest('.thankyou-box')) {
             switchActivePage(pagesData.length);
             if (e.target.closest('.thankyou-box h1')) {
                 lastTitleInput.focus();
@@ -3299,7 +4056,54 @@ document.addEventListener('DOMContentLoaded', () => {
             editorPanel.style.width = savedWidth;
         }
 
+        // Toggle Sidebar Drawer Handle Button
+        const toggleBtn = document.getElementById('sidebar-toggle-btn');
+        if (toggleBtn) {
+            const toggleSidebar = (forceState = null) => {
+                const willCollapse = forceState !== null ? forceState : !editorPanel.classList.contains('collapsed');
+                if (willCollapse) {
+                    editorPanel.classList.add('collapsed');
+                    toggleBtn.textContent = '▶';
+                    toggleBtn.setAttribute('title', 'Expand Sidebar');
+                    resizeHandle.style.cursor = 'default';
+                } else {
+                    editorPanel.classList.remove('collapsed');
+                    toggleBtn.textContent = '◀';
+                    toggleBtn.setAttribute('title', 'Collapse Sidebar');
+                    resizeHandle.style.cursor = 'col-resize';
+                }
+                localStorage.setItem('sidebar_collapsed', willCollapse ? 'true' : 'false');
+                
+                // Force preview recalculation & scroll containment re-measure
+                cachedMaxContentHeight = null;
+                renderPreview();
+            };
+
+            // Prevent drag-resize on button interactions
+            toggleBtn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            toggleBtn.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+            });
+
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSidebar();
+            });
+
+            // Initialize saved collapse state
+            const savedCollapsed = localStorage.getItem('sidebar_collapsed');
+            if (savedCollapsed === 'true') {
+                editorPanel.classList.add('collapsed');
+                toggleBtn.textContent = '▶';
+                toggleBtn.setAttribute('title', 'Expand Sidebar');
+                resizeHandle.style.cursor = 'default';
+            }
+        }
+
         resizeHandle.addEventListener('mousedown', (e) => {
+            if (editorPanel.classList.contains('collapsed')) return; // Disable resizing when collapsed!
             isResizing = true;
             document.body.style.cursor = 'col-resize';
             resizeHandle.classList.add('resizing');
@@ -3476,6 +4280,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPreview();
         saveWorkspaceToLocalStorage();
     }
+
+
+    // Clear height cache on window resize
+    window.addEventListener('resize', () => {
+        cachedMaxContentHeight = null;
+    });
 
     // 8. INITIALIZE WORKSPACE ON LAUNCH
     const loaded = loadWorkspaceFromLocalStorage();
